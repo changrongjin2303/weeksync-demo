@@ -1276,14 +1276,21 @@ const PlanDetailPage = {
         </div>
       </div>
 
-      <!-- Manager: Evaluation Banner -->
-      <div v-if="canEvaluate" class="alert alert-info">
-        ✅ 该计划已进入执行阶段，您可以对已完成的任务进行评估打分
+      <!-- 审批意见 card (shown to manager/reviewer when plan is approved) -->
+      <div v-if="plan.status === 'approved' && plan.approvedBy" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:6px;">审批意见</div>
+        <div style="font-size:13px;color:var(--text-2);">{{ plan.approvedBy }} {{ plan.weekCode }} 已完成可行性确认，进入执行阶段，重点关注本周关键交付与阻塞处理。</div>
       </div>
 
-      <!-- Task List Header -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div style="font-size:13px;font-weight:600;">任务列表 <span style="color:var(--text-3);font-weight:400;">共 {{ plan.tasks.length }} 项，已完成 {{ doneCount }} 项</span></div>
+      <!-- Task List Header (card with summary + add button) -->
+      <div style="background:white;border-radius:14px;border:1px solid var(--border);padding:14px;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:600;">任务列表</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:3px;">共 {{ plan.tasks.length }} 项，已完成 {{ doneCount }} 项，高优未闭环 {{ highPriorityOpenCount }} 项<span v-if="pendingEvalTaskCount > 0">，待结果评估 {{ pendingEvalTaskCount }} 项</span></div>
+        <button v-if="canAddTask" style="width:100%;margin-top:10px;padding:10px;border:1.5px dashed var(--primary);background:none;border-radius:10px;color:var(--primary);font-size:14px;cursor:pointer;" @click="showAddTaskModal = true">+ 添加任务</button>
+      </div>
+      <!-- Section label for manager viewing -->
+      <div v-if="(canEvaluate || canApprove) && plan.tasks.length > 0" style="background:#dcfce7;border:1.5px solid #86efac;border-radius:10px;padding:8px 14px;margin-bottom:10px;font-size:13px;color:#16a34a;font-weight:500;">
+        直属负责人主责任务（{{ plan.tasks.length }}）
       </div>
 
       <!-- All tasks done banner -->
@@ -1292,9 +1299,9 @@ const PlanDetailPage = {
       </div>
 
       <!-- Task Cards (expandable) -->
-      <div v-for="(t, idx) in plan.tasks" :key="t.id"
-        style="background:white;border-radius:12px;margin-bottom:10px;overflow:hidden;border:1px solid #e8eaf0;"
-        :style="{ borderLeft: '4px solid ' + (t.priority === 'high' ? 'var(--primary)' : t.priority === 'medium' ? 'var(--warning)' : '#a0aec0') }">
+      <div v-for="(t, idx) in plan.tasks" :key="t.id" style="margin-bottom:10px;">
+        <div style="background:white;border-radius:12px;overflow:hidden;border:1px solid #e8eaf0;"
+          :style="{ borderLeft: '4px solid ' + (t.priority === 'high' ? 'var(--primary)' : t.priority === 'medium' ? 'var(--warning)' : '#a0aec0') }">
         <!-- Card header (clickable to expand) -->
         <div @click="expandedTaskId = expandedTaskId === t.id ? null : t.id" style="padding:12px 12px 10px;cursor:pointer;">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
@@ -1357,7 +1364,27 @@ const PlanDetailPage = {
             + 添加进展记录
           </button>
         </div>
-      </div>
+        </div><!-- end inner card -->
+
+        <!-- Task Action Buttons (manager/reviewer) -->
+        <div v-if="canEvaluate || canApprove" style="display:flex;gap:8px;margin-top:6px;">
+          <button style="display:flex;align-items:center;gap:4px;padding:8px 16px;border:1.5px solid #ede9fe;background:#f5f3ff;color:#7c3aed;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;" @click.stop="openEval(t)">
+            ★ 结果评估
+          </button>
+          <button style="display:flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid var(--border);background:white;color:var(--text-2);border-radius:8px;font-size:12px;cursor:pointer;" @click.stop="expandedAuxId = expandedAuxId === t.id ? null : t.id">
+            {{ expandedAuxId === t.id ? '↑ 收起辅流程' : '↓ 更多操作（1）' }}
+          </button>
+        </div>
+        <!-- Secondary action buttons (expanded) -->
+        <div v-if="(canEvaluate || canApprove) && expandedAuxId === t.id" style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+          <button style="display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border:1.5px solid #fee2e2;background:#fef2f2;color:#dc2626;border-radius:10px;font-size:13px;cursor:pointer;" @click.stop="rejectCompletion(t)">
+            ⊘ 退回完成
+          </button>
+          <button style="display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border:1.5px solid #bae6fd;background:#f0f9ff;color:#0284c7;border-radius:10px;font-size:13px;cursor:pointer;" @click.stop="openCollab(t)">
+            ✈ 发起协办
+          </button>
+        </div>
+      </div><!-- end outer wrapper -->
 
       <!-- Bottom Buttons: Add Task + AI Import -->
       <div v-if="canAddTask" style="display:flex;gap:10px;margin-top:12px;">
@@ -1454,6 +1481,46 @@ const PlanDetailPage = {
         </div>
       </div>
 
+      <!-- 发起协办 Modal -->
+      <div v-if="showCollabModal && collabTask" class="modal-overlay" @click.self="showCollabModal = false">
+        <div class="modal-content" style="border-radius:20px;padding:0;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);">
+            <span style="font-size:16px;font-weight:700;">发起协办</span>
+            <button style="background:none;border:none;font-size:20px;color:var(--text-3);cursor:pointer;line-height:1;" @click="showCollabModal = false">✕</button>
+          </div>
+          <div style="padding:16px 20px;">
+            <!-- Task info -->
+            <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:16px;">
+              <div style="font-size:14px;font-weight:600;">{{ collabTask.title }}</div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:3px;">{{ collabTask.project || '未关联项目' }} · 截止 {{ collabTask.dueDate }}</div>
+            </div>
+            <!-- 协办部门 -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;color:var(--text-3);margin-bottom:6px;">协办部门</div>
+              <select v-model="collabDept" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:white;box-sizing:border-box;">
+                <option value="">请选择一级部门</option>
+                <option v-for="d in l1Depts" :key="d.id" :value="d.id">{{ d.name }}</option>
+              </select>
+            </div>
+            <!-- 协办负责人 (auto) -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;color:var(--text-3);margin-bottom:6px;">协办负责人</div>
+              <input readonly :value="collabDeptManager || '选择一级部门后自动带出'" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;color:var(--text-3);background:var(--bg);box-sizing:border-box;" />
+            </div>
+            <!-- 协办说明 -->
+            <div style="margin-bottom:20px;">
+              <div style="font-size:13px;color:var(--text-3);margin-bottom:6px;">协办说明</div>
+              <textarea v-model="collabNote" placeholder="说明需要对方协助处理的事项、预期回执内容。" rows="4" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;resize:none;box-sizing:border-box;"></textarea>
+            </div>
+            <!-- Buttons -->
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-outline" style="flex:1;padding:12px;border-radius:12px;" @click="showCollabModal = false">取消</button>
+              <button class="btn btn-primary" style="flex:1;padding:12px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:4px;" :disabled="!collabDept" @click="submitCollab">✈ 确认发起</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Return Modal -->
       <div v-if="showReturnModal" class="modal-overlay" @click.self="showReturnModal = false">
         <div class="modal-content">
@@ -1497,7 +1564,7 @@ const PlanDetailPage = {
       </div>
     </div>
   `,
-  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalComment: '', comment: '', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '吴文建', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
+  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalComment: '', comment: '', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, expandedAuxId: null, showCollabModal: false, collabTask: null, collabDept: '', collabNote: '', newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '吴文建', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
   computed: {
     plan() { return store.plans.find(p => p.id === parseInt(this.$route.params.id)); },
     isManagerViewing() { return store.currentRole === 'MANAGER' || store.currentRole === 'BOSS'; },
@@ -1542,11 +1609,45 @@ const PlanDetailPage = {
     highPriorityCount() {
       if (!this.plan) return 0;
       return this.plan.tasks.filter(t => t.priority === 'high').length;
+    },
+    highPriorityOpenCount() {
+      if (!this.plan) return 0;
+      return this.plan.tasks.filter(t => t.priority === 'high' && t.status !== 'done').length;
+    },
+    pendingEvalTaskCount() {
+      if (!this.plan) return 0;
+      return this.plan.tasks.filter(t => t.status === 'done' && !t.reviewResult).length;
+    },
+    l1Depts() { return store.departments.filter(d => !d.parentId); },
+    collabDeptManager() {
+      if (!this.collabDept) return '';
+      const dept = store.departments.find(d => d.id === this.collabDept);
+      if (!dept) return '';
+      const mgr = store.users.find(u => (u.role === 'MANAGER' || u.role === 'BOSS') && u.deptId === this.collabDept);
+      return mgr ? mgr.name + '（' + dept.name + '）' : dept.name + ' 负责人';
     }
   },
   methods: {
     statusLabel, priorityLabel, sourceLabel, taskStatusLabel,
     priorityStars(priority) { return priority === 'high' ? 5 : priority === 'medium' ? 4 : 3; },
+    openCollab(t) {
+      this.collabTask = t;
+      this.collabDept = '';
+      this.collabNote = '';
+      this.showCollabModal = true;
+    },
+    submitCollab() {
+      if (this.collabTask) {
+        this.collabTask.collabStatus = 'pending';
+        const deptName = this.collabDeptManager || '协办部门';
+        toast('✈ 协办已发起，等待 ' + deptName + ' 接收');
+        store.notifications.unshift({ id: Date.now(), icon: '✈', iconBg: '#f0f9ff', title: '协办申请', desc: '发起协办: ' + this.collabTask.title + ' → ' + deptName, time: '刚刚', unread: true });
+        this.expandedAuxId = null;
+      }
+      this.showCollabModal = false;
+      this.collabNote = '';
+      this.collabDept = '';
+    },
     addTaskFromModal() {
       if (!this.newTaskTitle.trim() || !this.newTaskDue || !this.newTaskDesc || !this.newTaskDeliverable) return;
       this.plan.tasks.push({
@@ -1644,73 +1745,98 @@ const TeamPlansPage = {
 // Execution Page
 const ExecutionPage = {
   data() { return {
-    logContent: '', showLogForm: false, logDate: '2026-03-12', logProject: '', logTask: '',
+    logContent: '', logDate: '2026-03-12', logProject: '', logTask: '',
     statusFilter: 'all', showDueDateModal: false, dueDateTaskId: null, requestedDueDate: '', dueDateReason: ''
   }; },
   template: `
     <div class="page">
-      <!-- Record Work Activity -->
-      <div class="card" style="background:var(--primary);color:white;border:none;">
-        <div v-if="!showLogForm" style="text-align:center;padding:6px 0;cursor:pointer;" @click="showLogForm = true">
-          <span style="font-size:16px;">+ 记录工作动态</span>
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+        <div>
+          <div style="font-size:22px;font-weight:700;line-height:1.2;">执行</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:3px;">记录每日工作动态，并同步更新本周任务状态。</div>
         </div>
-        <div v-else>
-          <div style="font-size:14px;font-weight:600;margin-bottom:10px;">记录工作动态</div>
-          <input type="date" v-model="logDate" style="margin-bottom:8px;color:var(--text);" />
-          <select v-model="logProject" style="margin-bottom:8px;color:var(--text);">
-            <option value="">选择项目（可选）</option>
-            <option v-for="p in store.projects.filter(p2 => p2.isActive)" :key="p.id" :value="p.name">{{ p.name }}</option>
-          </select>
-          <select v-model="logTask" style="margin-bottom:8px;color:var(--text);">
-            <option value="">选择任务（可选）</option>
-            <option v-for="t in allTasks" :key="t.id" :value="t.id">{{ t.title }}</option>
-          </select>
-          <textarea v-model="logContent" rows="3" placeholder="例如：完成了哪些工作、推进到什么程度、是否有阻塞。" style="margin-bottom:8px;color:var(--text);"></textarea>
-          <div class="btn-group">
-            <button class="btn btn-sm" style="flex:1;background:white;color:var(--primary);font-weight:600;" :disabled="!logContent.trim()" @click="addLog">+ 记录工作动态</button>
-            <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;" @click="showLogForm = false">取消</button>
+        <button class="btn btn-outline btn-sm" style="display:flex;align-items:center;gap:4px;font-size:13px;padding:6px 12px;border-radius:20px;" @click="toast('已刷新')">↺ 刷新</button>
+      </div>
+
+      <week-selector />
+
+      <!-- 待办入口 -->
+      <div class="card" style="padding:14px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+          <span style="color:var(--primary);font-size:16px;">☰</span>
+          <span style="font-size:14px;font-weight:600;">待办入口</span>
+        </div>
+        <div v-if="pendingEvalCount > 0" style="display:flex;justify-content:space-between;align-items:center;background:white;border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;" @click="$router.push('/plans')">
+          <div>
+            <div style="font-size:14px;font-weight:600;">待结果评估</div>
+            <div v-if="pendingEvalTask" style="font-size:12px;color:var(--text-3);margin-top:2px;">{{ pendingEvalTask }}</div>
           </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="background:none;color:var(--danger);font-size:16px;font-weight:700;">{{ pendingEvalCount }}</span>
+            <span style="color:var(--text-3);">›</span>
+          </div>
+        </div>
+        <div v-else style="text-align:center;padding:12px;color:var(--text-3);font-size:13px;">暂无待办事项</div>
+      </div>
+
+      <!-- 3 stat boxes -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">待开始</div>
+          <div style="font-size:24px;font-weight:700;color:var(--text);">{{ todoCount }}</div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">执行中</div>
+          <div style="font-size:24px;font-weight:700;color:var(--text);">{{ progressCount }}</div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">已完成</div>
+          <div style="font-size:24px;font-weight:700;color:var(--text);">{{ doneCount }}</div>
         </div>
       </div>
 
-      <!-- Weekly Tasks Section -->
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-          <div>
-            <div style="font-size:15px;font-weight:600;">本周任务执行</div>
-            <div style="font-size:12px;color:var(--text-3);">{{ filteredTasks.length }} / {{ allTasks.length }} 条任务</div>
-          </div>
-          <a v-if="isManager" style="font-size:12px;color:var(--primary);cursor:pointer;" @click="$router.push('/plans')">查看团队计划</a>
+      <!-- All done banner -->
+      <div v-if="allTasksDone && totalCount > 0" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#16a34a;">本周任务已全部完成</div>
+          <div style="font-size:12px;color:#22c55e;margin-top:3px;">下一步前往复盘页生成本周沉淀。</div>
         </div>
+        <button class="btn btn-primary" style="border-radius:22px;padding:8px 18px;white-space:nowrap;" @click="$router.push('/review')">前往复盘</button>
+      </div>
 
-        <!-- Status Filter Tabs -->
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <!-- Task execution section (when not all done) -->
+      <div v-if="!allTasksDone && totalCount > 0" class="card" style="padding:14px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:600;">本周任务执行</div>
+          <span style="font-size:12px;color:var(--text-3);">{{ totalCount }} 项</span>
+        </div>
+        <!-- Status filter -->
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
           <button v-for="f in filterOptions" :key="f.value"
             :style="{ padding:'5px 14px', borderRadius:'8px', fontSize:'12px', border: statusFilter === f.value ? 'none' : '1px solid var(--border)',
               background: statusFilter === f.value ? 'var(--primary)' : 'var(--surface-soft)',
               color: statusFilter === f.value ? 'white' : 'var(--text-2)', cursor:'pointer' }"
             @click="statusFilter = f.value">{{ f.label }}</button>
         </div>
-
-        <!-- Plan Status Banner -->
-        <div v-if="currentPlan && !canUpdateStatus" style="background:var(--warning-soft);padding:10px 14px;border-radius:8px;font-size:12px;color:var(--warning);margin-bottom:12px;">
+        <!-- Not in execution stage warning -->
+        <div v-if="!canUpdateStatus" style="background:var(--warning-soft);padding:10px 14px;border-radius:8px;font-size:12px;color:var(--warning);margin-bottom:10px;">
           当前周计划尚未进入执行阶段，暂不可变更任务状态。
         </div>
-
-        <!-- Task Cards -->
-        <div v-for="t in filteredTasks" :key="t.id" style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <!-- Task cards -->
+        <div v-for="t in filteredTasks" :key="t.id" style="border:1px solid var(--border);border-left:4px solid;border-radius:0 12px 12px 0;padding:12px;margin-bottom:8px;"
+          :style="{ borderLeftColor: t.priority === 'high' ? 'var(--primary)' : t.priority === 'medium' ? 'var(--warning)' : '#a0aec0' }">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
             <div style="flex:1;min-width:0;">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <span style="font-size:14px;font-weight:600;">{{ t.title }}</span>
+                <span style="font-size:13px;font-weight:600;">{{ t.title }}</span>
                 <span class="stars" style="font-size:11px;">
-                  <span v-for="s in 5" :key="s" class="star" :class="{ filled: s <= priorityStars(t.priority) }">★</span>
+                  <span v-for="s in priorityStars(t.priority)" :key="'f'+s" class="star filled">★</span>
+                  <span v-for="s in (5 - priorityStars(t.priority))" :key="'e'+s" class="star">★</span>
                 </span>
                 <span class="badge" :class="'badge-' + t.priority" style="font-size:10px;padding:1px 6px;">{{ priorityLabel(t.priority) }}</span>
               </div>
-              <div style="font-size:12px;color:var(--text-3);margin-top:4px;">
-                {{ t.project || '未关联项目' }} · 截止 {{ t.dueDate ? '2026-' + t.dueDate : '未设置' }}
-              </div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:4px;">{{ t.project || '未关联项目' }} · 截止 {{ t.dueDate }}</div>
             </div>
             <span :style="{ fontSize:'11px', padding:'3px 10px', borderRadius:'20px', fontWeight:500,
               background: t.status === 'done' ? 'var(--success-soft)' : t.status === 'progress' ? 'var(--primary-soft)' : '#f1f5f9',
@@ -1718,67 +1844,65 @@ const ExecutionPage = {
               {{ taskStatusLabel(t.status) }}
             </span>
           </div>
-
-          <!-- Action Buttons -->
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">
             <button v-for="opt in statusOptions" :key="opt.value"
               :disabled="!canUpdateStatus || t.status === opt.value || !canAdvanceTo(t.status, opt.value)"
               :style="{
-                padding:'6px 14px', borderRadius:'8px', fontSize:'11px', cursor: (!canUpdateStatus || t.status === opt.value || !canAdvanceTo(t.status, opt.value)) ? 'default' : 'pointer',
+                padding:'6px 12px', borderRadius:'8px', fontSize:'11px',
                 border: t.status === opt.value ? 'none' : '1px solid ' + ((!canUpdateStatus || !canAdvanceTo(t.status, opt.value)) ? 'var(--border)' : opt.borderColor),
                 background: t.status === opt.value ? opt.activeBg : ((!canUpdateStatus || !canAdvanceTo(t.status, opt.value)) ? 'var(--surface-soft)' : 'white'),
                 color: t.status === opt.value ? opt.activeColor : ((!canUpdateStatus || !canAdvanceTo(t.status, opt.value)) ? 'var(--text-3)' : opt.activeColor),
-                opacity: (!canUpdateStatus || !canAdvanceTo(t.status, opt.value)) && t.status !== opt.value ? 0.5 : 1
+                opacity: (!canUpdateStatus || !canAdvanceTo(t.status, opt.value)) && t.status !== opt.value ? 0.4 : 1,
+                cursor: (!canUpdateStatus || t.status === opt.value || !canAdvanceTo(t.status, opt.value)) ? 'default' : 'pointer'
               }"
-              @click="changeStatus(t, opt.value)">
-              标记为{{ opt.label }}
+              @click="changeStatus(t, opt.value)">标记为{{ opt.label }}
             </button>
             <button :disabled="!canUpdateStatus"
-              :style="{
-                padding:'6px 14px', borderRadius:'8px', fontSize:'11px', cursor: canUpdateStatus ? 'pointer' : 'default',
-                border:'1px solid ' + (canUpdateStatus ? 'var(--warning-soft)' : 'var(--border)'),
-                background: canUpdateStatus ? 'white' : 'var(--surface-soft)',
-                color: canUpdateStatus ? 'var(--warning)' : 'var(--text-3)',
-                opacity: canUpdateStatus ? 1 : 0.5
-              }"
-              @click="openDueDate(t)">
-              申请延期
-            </button>
+              :style="{ padding:'6px 12px', borderRadius:'8px', fontSize:'11px', border:'1px solid var(--border)',
+                background:'white', color: canUpdateStatus ? 'var(--warning)' : 'var(--text-3)', opacity: canUpdateStatus ? 1 : 0.4, cursor: canUpdateStatus ? 'pointer' : 'default' }"
+              @click="openDueDate(t)">申请延期</button>
           </div>
         </div>
-
-        <div v-if="!filteredTasks.length" style="text-align:center;padding:20px;color:var(--text-3);font-size:13px;">
-          {{ allTasks.length === 0 ? '当前周还没有可执行任务' : '当前筛选下没有任务' }}
-        </div>
+        <div v-if="!filteredTasks.length" style="text-align:center;padding:16px;color:var(--text-3);font-size:13px;">当前筛选下没有任务</div>
       </div>
 
-      <!-- Work Logs Section -->
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span style="font-size:16px;">📋</span>
-          <div>
-            <div style="font-size:14px;font-weight:600;">本周执行记录</div>
-            <div style="font-size:11px;color:var(--text-3);">按日期倒序展示，复盘页会直接复用这些记录。</div>
-          </div>
+      <!-- 每日工作动态 (always visible) -->
+      <div class="card" style="padding:14px;margin-bottom:12px;">
+        <div style="margin-bottom:12px;">
+          <div style="font-size:14px;font-weight:600;">每日工作动态</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px;">支持独立记录，也可以关联项目或任务。</div>
         </div>
+        <input type="date" v-model="logDate" style="margin-bottom:8px;" />
+        <select v-model="logProject" style="margin-bottom:8px;">
+          <option value="">选择项目（可选）</option>
+          <option v-for="p in store.projects.filter(p2 => p2.isActive)" :key="p.id" :value="p.name">{{ p.name }}</option>
+        </select>
+        <select v-model="logTask" style="margin-bottom:8px;">
+          <option value="">选择任务（可选）</option>
+          <option v-for="t in allTasks" :key="t.id" :value="t.id">{{ t.title }}</option>
+        </select>
+        <textarea v-model="logContent" rows="3" placeholder="例如：完成了哪些工作、推进到什么程度、是否有阻塞。" style="margin-bottom:10px;"></textarea>
+        <button class="btn btn-primary btn-block" :disabled="!logContent.trim()" @click="addLog">记录动态</button>
+      </div>
+
+      <!-- Work Logs -->
+      <div class="card" style="padding:14px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px;">本周执行记录</div>
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:10px;">按日期倒序展示，复盘页会直接复用这些记录。</div>
         <div v-for="log in todayLogs" :key="log.id" style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;font-size:13px;">
             <span style="font-weight:600;">{{ log.date }}</span>
             <span style="font-size:11px;color:var(--text-3);">{{ log.project || '独立记录' }}</span>
           </div>
           <div style="font-size:13px;margin-top:6px;color:var(--text);white-space:pre-wrap;">{{ log.content }}</div>
-          <div style="font-size:11px;color:var(--text-3);margin-top:6px;">
-            {{ log.project ? '项目：' + log.project : '未挂项目' }} · {{ log.taskTitle ? '任务：' + log.taskTitle : '未挂任务' }}
-          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;">{{ log.project ? '项目：' + log.project : '未挂项目' }} · {{ log.taskTitle ? '任务：' + log.taskTitle : '未挂任务' }}</div>
         </div>
-        <div v-if="!todayLogs.length" style="text-align:center;padding:20px;color:var(--text-3);font-size:13px;background:var(--surface-soft);border-radius:8px;">
-          本周还没有工作动态记录。
-        </div>
+        <div v-if="!todayLogs.length" style="text-align:center;padding:16px;color:var(--text-3);font-size:13px;background:var(--surface-soft);border-radius:8px;">本周还没有工作动态记录。</div>
       </div>
 
       <!-- Due Date Modal -->
       <div v-if="showDueDateModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:flex;align-items:flex-end;justify-content:center;">
-        <div style="background:white;border-radius:16px 16px 0 0;width:100%;max-width:430px;padding:20px;">
+        <div style="background:white;border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:20px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
             <h3 style="font-size:16px;font-weight:600;">申请延期</h3>
             <span style="cursor:pointer;color:var(--text-3);" @click="showDueDateModal = false">关闭</span>
@@ -1798,30 +1922,37 @@ const ExecutionPage = {
       const uid = currentUser().id;
       return store.plans.find(p => p.userId === uid && p.weekCode === '2026-W11');
     },
-    canUpdateStatus() {
-      return this.currentPlan && this.currentPlan.status === 'approved';
-    },
-    isManager() {
-      return store.currentRole === 'MANAGER';
-    },
+    canUpdateStatus() { return this.currentPlan && this.currentPlan.status === 'approved'; },
     allTasks() { return this.currentPlan ? this.currentPlan.tasks : []; },
+    totalCount() { return this.allTasks.length; },
+    todoCount() { return this.allTasks.filter(t => t.status === 'todo').length; },
+    progressCount() { return this.allTasks.filter(t => t.status === 'progress').length; },
+    doneCount() { return this.allTasks.filter(t => t.status === 'done').length; },
+    allTasksDone() { return this.totalCount > 0 && this.doneCount === this.totalCount; },
+    pendingEvalCount() {
+      const plans = store.plans.filter(p => p.status === 'approved' && p.userId !== currentUser().id);
+      let count = 0;
+      plans.forEach(p => { count += p.tasks.filter(t => t.status === 'done' && !t.reviewResult).length; });
+      return count;
+    },
+    pendingEvalTask() {
+      const plans = store.plans.filter(p => p.status === 'approved' && p.userId !== currentUser().id);
+      for (const p of plans) {
+        const t = p.tasks.find(t => t.status === 'done' && !t.reviewResult);
+        if (t) return t.title;
+      }
+      return '';
+    },
     filteredTasks() {
       let tasks = this.allTasks;
       if (this.statusFilter !== 'all') tasks = tasks.filter(t => t.status === this.statusFilter);
       const pRank = { high: 0, medium: 1, low: 2 };
-      const sRank = { todo: 0, progress: 1, done: 2 };
-      return [...tasks].sort((a, b) => {
-        const pd = (pRank[a.priority] || 1) - (pRank[b.priority] || 1);
-        if (pd !== 0) return pd;
-        return (sRank[a.status] || 0) - (sRank[b.status] || 0);
-      });
+      return [...tasks].sort((a, b) => (pRank[a.priority] || 1) - (pRank[b.priority] || 1));
     },
     filterOptions() {
       return [
-        { value: 'all', label: '全部' },
-        { value: 'todo', label: '待开始' },
-        { value: 'progress', label: '执行中' },
-        { value: 'done', label: '已完成' },
+        { value: 'all', label: '全部' }, { value: 'todo', label: '待开始' },
+        { value: 'progress', label: '执行中' }, { value: 'done', label: '已完成' },
       ];
     },
     statusOptions() {
@@ -1831,18 +1962,11 @@ const ExecutionPage = {
         { value: 'done', label: '已完成', activeBg: 'var(--success-soft)', activeColor: 'var(--success)', borderColor: '#86efac' },
       ];
     },
-    totalCount() { return this.allTasks.length; },
-    doneCount() { return this.allTasks.filter(t => t.status === 'done').length; },
-    todoCount() { return this.allTasks.filter(t => t.status === 'todo').length; },
-    progressCount() { return this.allTasks.filter(t => t.status === 'progress').length; },
-    todayLogs() {
-      const uid = currentUser().id;
-      return store.workLogs.filter(l => l.userId === uid).slice(0, 5);
-    }
+    todayLogs() { return store.workLogs.filter(l => l.userId === currentUser().id).slice(0, 5); }
   },
   methods: {
     taskStatusLabel, priorityLabel,
-    priorityStars(p) { return p === 'high' ? 5 : p === 'medium' ? 3 : 1; },
+    priorityStars(p) { return p === 'high' ? 5 : p === 'medium' ? 4 : 3; },
     canAdvanceTo(currentStatus, targetStatus) {
       const order = ['todo', 'progress', 'done'];
       return order.indexOf(targetStatus) === order.indexOf(currentStatus) + 1;
@@ -1854,7 +1978,6 @@ const ExecutionPage = {
       }
       t.status = newStatus;
       toast('任务状态已更新');
-      store.auditLogs.unshift({ id: Date.now(), type: 'task', content: currentUser().name + ' 将 "' + t.title + '" 标记为' + this.taskStatusLabel(newStatus), time: '03-12 ' + new Date().toTimeString().slice(0,5) });
     },
     openDueDate(t) {
       if (!this.canUpdateStatus) return;
@@ -1864,12 +1987,8 @@ const ExecutionPage = {
       this.showDueDateModal = true;
     },
     submitDueDate() {
-      const t = this.allTasks.find(t2 => t2.id === this.dueDateTaskId);
-      if (t) {
-        toast('延期申请已提交，等待审批');
-        store.auditLogs.unshift({ id: Date.now(), type: 'duedate', content: currentUser().name + ' 申请将 "' + t.title + '" 延期至 ' + this.requestedDueDate, time: '03-12 ' + new Date().toTimeString().slice(0,5) });
-        store.notifications.unshift({ id: Date.now(), icon: '📅', iconBg: 'var(--warning-soft)', title: '延期申请', desc: currentUser().name + ' 申请延期: ' + t.title, time: '刚刚', unread: true });
-      }
+      toast('延期申请已提交，等待审批');
+      store.notifications.unshift({ id: Date.now(), icon: '📅', iconBg: 'var(--warning-soft)', title: '延期申请', desc: '延期申请已提交', time: '刚刚', unread: true });
       this.showDueDateModal = false;
     },
     addLog() {
@@ -1882,12 +2001,10 @@ const ExecutionPage = {
       });
       this.logContent = '';
       this.logTask = '';
-      this.showLogForm = false;
       toast('工作动态已记录');
     }
   }
-};
-
+}
 // Review Page
 const ReviewPage = {
   data() { return { period: 'week', tab: 'review', selectedMonth: '2026-03', selectedQuarter: 'Q1', selectedYear: '2026' }; },
