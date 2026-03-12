@@ -509,11 +509,19 @@ const TabBar = {
           { path: '/notifications', icon: '🔔', label: '通知', badge: 2 },
         ];
       }
-      if ((role === 'BOSS' || role === 'HR') && ws === 'organization') {
+      if (role === 'BOSS' && ws === 'organization') {
         return [
-          { path: '/boss/dashboard', icon: '📊', label: '仪表盘' },
+          { path: '/boss/dashboard', icon: '📊', label: '分析看板' },
           { path: '/boss/plans', icon: '📋', label: '全员计划' },
-          { path: '/boss/reports', icon: '📈', label: '报告' },
+          { path: '/boss/reports', icon: '📈', label: '组织报告' },
+          { path: '/notifications', icon: '🔔', label: '通知', badge: 2 },
+        ];
+      }
+      if (role === 'HR' && ws === 'organization') {
+        return [
+          { path: '/hr/dashboard', icon: '📋', label: '合规概览' },
+          { path: '/boss/plans', icon: '👥', label: '全员计划' },
+          { path: '/hr/analytics', icon: '📊', label: '人员分析' },
           { path: '/notifications', icon: '🔔', label: '通知', badge: 2 },
         ];
       }
@@ -604,8 +612,12 @@ const WorkspaceModeBar = {
   methods: {
     switchWs(ws) {
       store.workspace = ws;
-      if (ws === 'organization') this.$router.push('/boss/dashboard');
-      else this.$router.push('/dashboard');
+      if (ws === 'organization') {
+        if (store.currentRole === 'HR') this.$router.push('/hr/dashboard');
+        else this.$router.push('/boss/dashboard');
+      } else {
+        this.$router.push('/dashboard');
+      }
     }
   }
 };
@@ -2525,58 +2537,134 @@ const BossDashboard = {
   template: `
     <div class="page">
       <workspace-mode-bar />
-      <div style="margin-bottom:20px;">
-        <div style="font-size:22px;font-weight:800;">组织仪表盘</div>
-        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">2026-W11 · 全公司概览</div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:20px;font-weight:800;">分析看板</div>
+        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ store.selectedWeek }} · 全公司概览</div>
+      </div>
+      <week-selector />
+
+      <!-- Row 1: Core execution metrics (colored dashed cards) -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+        <div style="background:#e8f5fd;border:1.5px dashed #5bc4e0;border-radius:12px;padding:14px 10px;">
+          <div style="font-size:11px;color:#5bc4e0;margin-bottom:6px;">完成率</div>
+          <div style="font-size:22px;font-weight:800;color:#2d9fc5;">{{ completionRate }}%</div>
+        </div>
+        <div style="background:#eafaf1;border:1.5px dashed #52c47a;border-radius:12px;padding:14px 10px;">
+          <div style="font-size:11px;color:#52c47a;margin-bottom:6px;">已完成</div>
+          <div style="font-size:22px;font-weight:800;color:#27ae60;">{{ doneCount }}</div>
+        </div>
+        <div style="background:#fff8e6;border:1.5px dashed #f2994a;border-radius:12px;padding:14px 10px;">
+          <div style="font-size:11px;color:#f2994a;margin-bottom:6px;">获权延期</div>
+          <div style="font-size:22px;font-weight:800;color:#e07b1a;">{{ extendedCount }}</div>
+        </div>
+        <div style="background:#fff0f0;border:1.5px dashed #eb5757;border-radius:12px;padding:14px 10px;">
+          <div style="font-size:11px;color:#eb5757;margin-bottom:6px;">未完成</div>
+          <div style="font-size:22px;font-weight:800;color:#e03e3e;">{{ pendingCount }}</div>
+        </div>
       </div>
 
-      <!-- KPIs -->
-      <div class="stat-grid">
-        <div class="stat-card blue"><div class="stat-label">计划提交率</div><div class="stat-value blue">85%</div></div>
-        <div class="stat-card green"><div class="stat-label">任务完成率</div><div class="stat-value green">72%</div></div>
-        <div class="stat-card orange"><div class="stat-label">高优关闭率</div><div class="stat-value orange">88%</div></div>
-        <div class="stat-card violet"><div class="stat-label">平均得分</div><div class="stat-value violet">7.6</div></div>
+      <!-- Row 2: Coverage metrics (grey) -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">涉及项目</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text-1);">{{ projectCount }}</div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">涉及部门</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text-1);">{{ deptCount }}</div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">协作项目</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text-1);">{{ collabCount }}</div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">动态</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text-1);">{{ dynamicsCount }}</div>
+        </div>
       </div>
 
       <!-- Alert -->
-      <div class="alert alert-warning">⚠️ 市场部本周计划提交率仅75%，低于公司标准（90%）</div>
+      <div v-if="lowRateDepts.length" class="alert alert-warning" style="margin-bottom:14px;">
+        ⚠️ {{ lowRateDepts.map(d=>d.name).join('、') }}本周提交率偏低，低于公司标准（90%）
+      </div>
 
       <!-- Department Performance -->
-      <div class="section-title">🏢 部门绩效</div>
-      <div v-for="d in store.departments" :key="d.id" class="card" style="padding:12px 14px;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">🏢 部门执行概览</div>
+      <div v-for="d in l1Depts" :key="d.id" class="card" style="padding:12px 14px;margin-bottom:8px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-size:14px;font-weight:600;">{{ d.name }}</div>
             <div style="font-size:12px;color:var(--text-3);">{{ d.leader }} · {{ d.members }}人</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-size:18px;font-weight:700;" :style="{ color: d.planRate >= 90 ? 'var(--success)' : d.planRate >= 80 ? 'var(--primary)' : 'var(--danger)' }">{{ d.planRate }}%</div>
+            <div style="font-size:20px;font-weight:700;" :style="{ color: d.planRate >= 90 ? 'var(--success)' : d.planRate >= 80 ? 'var(--primary)' : 'var(--danger)' }">{{ d.planRate }}%</div>
             <div style="font-size:11px;color:var(--text-3);">提交率</div>
           </div>
         </div>
         <div class="progress-bar" style="margin-top:8px;"><div class="progress-fill" :style="{ width: d.planRate + '%', background: d.planRate >= 90 ? 'var(--success)' : d.planRate >= 80 ? 'var(--primary)' : 'var(--danger)' }"></div></div>
       </div>
 
-      <!-- Donut Chart -->
-      <div class="card">
+      <!-- Plan status donut -->
+      <div class="card" style="margin-top:4px;">
         <div class="card-title"><span class="icon">📊</span>计划状态分布</div>
         <div style="display:flex;align-items:center;justify-content:center;gap:24px;padding:12px 0;">
-          <div class="donut-chart" style="background: conic-gradient(var(--success) 0% 35%, var(--primary) 35% 55%, var(--warning) 55% 75%, #94a3b8 75% 100%);">
+          <div class="donut-chart" :style="{ background: 'conic-gradient(var(--success) 0% '+reviewedPct+'%, var(--primary) '+reviewedPct+'% '+(reviewedPct+approvedPct)+'%, var(--warning) '+(reviewedPct+approvedPct)+'% '+(reviewedPct+approvedPct+pendingPct)+'%, #94a3b8 '+(reviewedPct+approvedPct+pendingPct)+'% 100%)' }">
             <div class="donut-center">
-              <div class="donut-value">34</div>
+              <div class="donut-value">{{ totalPlans }}</div>
               <div class="donut-label">总计划</div>
             </div>
           </div>
           <div style="font-size:12px;line-height:2;">
-            <div>🟢 已复盘 12</div>
-            <div>🔵 已通过 7</div>
-            <div>🟡 待审核 9</div>
-            <div>⚪ 草稿/未提交 6</div>
+            <div>🟢 已复盘 {{ reviewedPlans }}</div>
+            <div>🔵 已通过 {{ approvedPlans }}</div>
+            <div>🟡 待审核 {{ submittedPlans }}</div>
+            <div>⚪ 草稿/未提交 {{ draftPlans }}</div>
           </div>
         </div>
       </div>
+
+      <!-- AI Analysis -->
+      <div class="ai-card" style="margin-top:12px;">
+        <div class="ai-header">
+          <span style="font-size:24px;">🤖</span>
+          <span class="ai-tag">AI 分析</span>
+          <span style="font-size:13px;font-weight:600;">组织洞察</span>
+        </div>
+        <div style="font-size:13px;line-height:1.8;">
+          <p>• 本周整体任务完成率 {{ completionRate }}%，共 {{ doneCount }} 个任务已关闭</p>
+          <p>• 共涉及 {{ projectCount }} 个项目，横跨 {{ deptCount }} 个部门，跨部协作 {{ collabCount }} 项</p>
+          <p v-if="lowRateDepts.length">• {{ lowRateDepts.map(d=>d.name).join('、') }}提交率偏低，建议重点关注</p>
+          <p>• 获批延期 {{ extendedCount }} 条，未完成 {{ pendingCount }} 个任务，需持续跟进</p>
+        </div>
+      </div>
     </div>
-  `
+  `,
+  computed: {
+    allTasks() {
+      return store.plans.filter(p => p.weekCode === store.selectedWeek).flatMap(p => p.tasks);
+    },
+    doneCount() { return this.allTasks.filter(t => t.status === 'done').length; },
+    pendingCount() { return this.allTasks.filter(t => t.status !== 'done').length; },
+    completionRate() {
+      if (!this.allTasks.length) return 0;
+      return Math.round(this.doneCount / this.allTasks.length * 100);
+    },
+    extendedCount() { return 2; },
+    projectCount() { return [...new Set(this.allTasks.map(t => t.project).filter(Boolean))].length; },
+    deptCount() { return [...new Set(store.plans.filter(p => p.weekCode === store.selectedWeek).map(p => p.dept))].length || 0; },
+    collabCount() { return this.allTasks.filter(t => t.source === 'collab').length; },
+    dynamicsCount() { return 28; },
+    l1Depts() { return store.departments.filter(d => !d.parentId); },
+    lowRateDepts() { return this.l1Depts.filter(d => d.planRate < 80); },
+    totalPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek).length; },
+    reviewedPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek && p.status === 'reviewed').length; },
+    approvedPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek && p.status === 'approved').length; },
+    submittedPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek && p.status === 'submitted').length; },
+    draftPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek && (p.status === 'draft' || !p.status)).length; },
+    reviewedPct() { return this.totalPlans ? Math.round(this.reviewedPlans / this.totalPlans * 100) : 35; },
+    approvedPct() { return this.totalPlans ? Math.round(this.approvedPlans / this.totalPlans * 100) : 20; },
+    pendingPct() { return this.totalPlans ? Math.round(this.submittedPlans / this.totalPlans * 100) : 25; },
+  }
 };
 
 const BossPlans = {
@@ -2667,6 +2755,170 @@ const BossReports = {
       </div>
     </div>
   `
+};
+
+// ===================== HR PAGES =====================
+const HrDashboard = {
+  template: `
+    <div class="page">
+      <workspace-mode-bar />
+      <div style="margin-bottom:14px;">
+        <div style="font-size:20px;font-weight:800;">合规概览</div>
+        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ store.selectedWeek }} · 全员合规监控</div>
+      </div>
+      <week-selector />
+
+      <!-- HR core metrics -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div style="background:#e8f5fd;border:1.5px dashed #5bc4e0;border-radius:12px;padding:16px;">
+          <div style="font-size:12px;color:#5bc4e0;margin-bottom:6px;">计划提交覆盖率</div>
+          <div style="font-size:28px;font-weight:800;color:#2d9fc5;">{{ coverageRate }}%</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">{{ submittedCount }}/{{ totalUsers }} 人已提交</div>
+        </div>
+        <div style="background:#eafaf1;border:1.5px dashed #52c47a;border-radius:12px;padding:16px;">
+          <div style="font-size:12px;color:#52c47a;margin-bottom:6px;">合规提交率</div>
+          <div style="font-size:28px;font-weight:800;color:#27ae60;">78%</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">按时提交计划</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:12px;">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">已提交</div>
+          <div style="font-size:22px;font-weight:800;color:var(--success);">{{ submittedCount }}</div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:12px;">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">未提交</div>
+          <div style="font-size:22px;font-weight:800;color:var(--danger);">{{ totalUsers - submittedCount }}</div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:12px;">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">逾期提交</div>
+          <div style="font-size:22px;font-weight:800;color:var(--warning);">3</div>
+        </div>
+      </div>
+
+      <!-- Alert -->
+      <div v-if="lowRateDepts.length" class="alert alert-warning" style="margin-bottom:14px;">
+        ⚠️ {{ lowRateDepts.map(d=>d.name).join('、') }} 提交率低于80%，请及时跟进
+      </div>
+
+      <!-- Department compliance ranking -->
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">📋 部门提交合规排名</div>
+      <div v-for="(d, idx) in rankedDepts" :key="d.id" class="card" style="padding:10px 14px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:16px;font-weight:800;color:var(--text-3);width:22px;text-align:center;">{{ idx+1 }}</div>
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:14px;font-weight:600;">{{ d.name }}</div>
+              <div style="font-size:18px;font-weight:700;" :style="{ color: d.planRate >= 90 ? 'var(--success)' : d.planRate >= 80 ? 'var(--primary)' : 'var(--danger)' }">{{ d.planRate }}%</div>
+            </div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px;">{{ d.leader }} · {{ d.members }}人</div>
+            <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" :style="{ width: d.planRate + '%', background: d.planRate >= 90 ? 'var(--success)' : d.planRate >= 80 ? 'var(--primary)' : 'var(--danger)' }"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+  computed: {
+    totalUsers() { return store.users.filter(u => u.role !== 'ADMIN').length || 12; },
+    submittedCount() {
+      return store.plans.filter(p => p.weekCode === store.selectedWeek && ['submitted','approved','reviewed'].includes(p.status)).length || 0;
+    },
+    coverageRate() { return this.totalUsers ? Math.round(this.submittedCount / this.totalUsers * 100) : 0; },
+    l1Depts() { return store.departments.filter(d => !d.parentId); },
+    rankedDepts() { return [...this.l1Depts].sort((a,b) => b.planRate - a.planRate); },
+    lowRateDepts() { return this.l1Depts.filter(d => d.planRate < 80); },
+  }
+};
+
+const HrAnalytics = {
+  template: `
+    <div class="page">
+      <workspace-mode-bar />
+      <div style="margin-bottom:14px;">
+        <div style="font-size:20px;font-weight:800;">人员分析</div>
+        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ store.selectedWeek }} · 全员行为洞察</div>
+      </div>
+      <week-selector />
+
+      <!-- Unsubmitted users -->
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">❗ 未提交计划人员</div>
+      <div class="card" style="padding:4px 12px;">
+        <div v-for="u in unsubmittedUsers" :key="u.id" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-size:14px;font-weight:600;">{{ u.name }}</div>
+            <div style="font-size:12px;color:var(--text-3);">{{ u.dept || '未分配部门' }} · {{ u.role }}</div>
+          </div>
+          <span class="badge badge-draft">未提交</span>
+        </div>
+        <div v-if="!unsubmittedUsers.length" style="text-align:center;color:var(--text-3);font-size:13px;padding:20px 0;">🎉 全员已提交本周计划</div>
+      </div>
+
+      <!-- Weekly activity heatmap -->
+      <div class="card" style="margin-top:12px;">
+        <div class="card-title"><span class="icon">📊</span>周度活跃度分布</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px;">
+          <div v-for="day in activityData" :key="day.label" style="text-align:center;">
+            <div style="height:48px;border-radius:8px;margin-bottom:4px;" :style="{ background: day.active >= 8 ? 'var(--success)' : day.active >= 5 ? 'var(--primary)' : day.active >= 3 ? 'var(--warning)' : '#f0f0f0' }"></div>
+            <div style="font-size:11px;color:var(--text-3);">{{ day.label }}</div>
+            <div style="font-size:12px;font-weight:600;">{{ day.active }}人</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Task load distribution -->
+      <div class="card" style="margin-top:12px;">
+        <div class="card-title"><span class="icon">⚖️</span>工作负载分布</div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">各员工本周任务数量分布</div>
+        <div v-for="row in loadData" :key="row.label" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="font-size:12px;color:var(--text-3);width:48px;">{{ row.label }}</div>
+          <div style="flex:1;height:20px;background:#f0f0f5;border-radius:4px;overflow:hidden;">
+            <div style="height:100%;border-radius:4px;transition:width 0.3s;" :style="{ width: row.pct + '%', background: row.color }"></div>
+          </div>
+          <div style="font-size:12px;font-weight:600;width:20px;text-align:right;">{{ row.count }}人</div>
+        </div>
+      </div>
+
+      <!-- AI HR Insight -->
+      <div class="ai-card" style="margin-top:12px;">
+        <div class="ai-header">
+          <span style="font-size:24px;">🤖</span>
+          <span class="ai-tag">AI 分析</span>
+          <span style="font-size:13px;font-weight:600;">人员洞察</span>
+        </div>
+        <div style="font-size:13px;line-height:1.8;">
+          <p>• 本周计划提交覆盖率较上周提升 8%，合规改善明显</p>
+          <p v-if="unsubmittedUsers.length">• 存在 {{ unsubmittedUsers.length }} 名员工未按时提交，建议HR介入跟进</p>
+          <p v-else>• 全员按时完成计划提交，整体合规表现优秀</p>
+          <p>• 员工周均任务数为 4.2 个，工作负载分配基本合理</p>
+          <p>• 建议对连续3周未提交计划的员工开展辅导谈话</p>
+        </div>
+      </div>
+    </div>
+  `,
+  computed: {
+    unsubmittedUsers() {
+      const week = store.selectedWeek;
+      const submittedIds = store.plans.filter(p => p.weekCode === week && p.status !== 'draft').map(p => p.userId);
+      return (store.users || []).filter(u => u.role !== 'ADMIN' && !submittedIds.includes(u.id)).slice(0, 6);
+    },
+    activityData() {
+      return [
+        { label: '周一', active: 10 },
+        { label: '周二', active: 8 },
+        { label: '周三', active: 7 },
+        { label: '周四', active: 9 },
+        { label: '周五', active: 6 },
+      ];
+    },
+    loadData() {
+      return [
+        { label: '1-3个', count: 3, pct: 25, color: 'var(--success)' },
+        { label: '4-6个', count: 7, pct: 58, color: 'var(--primary)' },
+        { label: '7-9个', count: 2, pct: 17, color: 'var(--warning)' },
+        { label: '10+个', count: 0, pct: 0, color: 'var(--danger)' },
+      ];
+    }
+  }
 };
 
 // ===================== ADMIN PAGES =====================
@@ -3234,6 +3486,8 @@ const routes = [
   { path: '/boss/dashboard', component: BossDashboard },
   { path: '/boss/plans', component: BossPlans },
   { path: '/boss/reports', component: BossReports },
+  { path: '/hr/dashboard', component: HrDashboard },
+  { path: '/hr/analytics', component: HrAnalytics },
   { path: '/admin/personnel', component: AdminPersonnel },
   { path: '/admin/projects', component: AdminProjects },
 ];
@@ -3262,7 +3516,7 @@ const App = {
   computed: {
     showBack() {
       return this.$route.path !== '/dashboard' && this.$route.path !== '/' &&
-             this.$route.path !== '/boss/dashboard' && !this.$route.path.startsWith('/admin/');
+             this.$route.path !== '/boss/dashboard' && this.$route.path !== '/hr/dashboard' && !this.$route.path.startsWith('/admin/');
     },
     pageTitle() {
       const map = {
@@ -3272,9 +3526,11 @@ const App = {
         '/execution': '今日执行',
         '/review': '周复盘',
         '/notifications': '通知中心',
-        '/boss/dashboard': '组织仪表盘',
+        '/boss/dashboard': '分析看板',
         '/boss/plans': '全员计划',
         '/boss/reports': '组织报告',
+        '/hr/dashboard': '合规概览',
+        '/hr/analytics': '人员分析',
         '/admin/personnel': '人员管理',
         '/admin/projects': '项目台账',
       };
@@ -3282,7 +3538,7 @@ const App = {
       return map[this.$route.path] || 'WeekSync';
     },
     pageSubtitle() {
-      if (this.$route.path === '/dashboard' || this.$route.path === '/boss/dashboard') {
+      if (this.$route.path === '/dashboard' || this.$route.path === '/boss/dashboard' || this.$route.path === '/hr/dashboard') {
         const r = roles.find(r2 => r2.id === store.currentRole);
         return r ? `${r.user} · ${r.name}` : '';
       }
