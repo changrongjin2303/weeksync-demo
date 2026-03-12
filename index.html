@@ -289,21 +289,58 @@ const store = reactive({
 
   // Mock data
   users: [
-    { id: 1, name: '张伟', role: 'EMPLOYEE', dept: '产品部', deptId: 1, managerId: 3, email: 'zhangwei@company.com', phone: '138****1234', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_001', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-12 06:00' },
-    { id: 2, name: '李娜', role: 'EMPLOYEE', dept: '技术部', deptId: 2, managerId: 3, email: 'lina@company.com', phone: '139****5678', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_002', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-12 06:00' },
-    { id: 3, name: '王强', role: 'MANAGER', dept: '产品部', deptId: 1, managerId: 5, email: 'wangqiang@company.com', phone: '137****9012', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_003', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-12 06:00' },
-    { id: 4, name: '赵敏', role: 'HR', dept: '人力资源部', deptId: 5, managerId: 5, email: 'zhaomin@company.com', phone: '136****3456', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_004', employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-12 06:00' },
-    { id: 5, name: '陈总', role: 'BOSS', dept: '总经办', deptId: null, managerId: null, email: 'chenzong@company.com', phone: '135****7890', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_005', employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'manual', lastSyncedAt: '2026-03-12 06:00' },
-    { id: 6, name: '刘管理', role: 'ADMIN', dept: '系统管理', deptId: null, managerId: 5, email: 'liuadmin@company.com', phone: '133****2345', isActive: true, identitySource: 'local', dingtalkUserId: null, employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'manual', lastSyncedAt: null },
-    { id: 7, name: '黄小明', role: 'EMPLOYEE', dept: '技术部', deptId: 2, managerId: 3, email: 'huangxm@company.com', phone: '138****5521', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_007', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-11 14:30' },
-    { id: 8, name: '周雪', role: 'EMPLOYEE', dept: '市场部', deptId: 3, managerId: null, email: 'zhouxue@company.com', phone: '139****8832', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_008', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-10 09:15' },
+    { id: 1, name: '张伟',  role: 'EMPLOYEE', dept: '软件部',    deptId: 11, managerId: 3, email: 'zhangwei@company.com',  phone: '138****1234', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_001', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-12 06:00' },
+    { id: 2, name: '李娜',  role: 'EMPLOYEE', dept: '软件部',    deptId: 11, managerId: 3, email: 'lina@company.com',       phone: '139****5678', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_002', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-12 06:00' },
+    { id: 3, name: '吴文建', role: 'MANAGER', dept: '技术事业部', deptId: 1,  managerId: 5, email: 'wuwenjian@company.com',  phone: '137****9012', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_003', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-12 06:00' },
+    { id: 4, name: '张曼丽', role: 'HR',      dept: '行政人事中心', deptId: 4, managerId: 5, email: 'zhangmanli@company.com', phone: '136****3456', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_004', employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-12 06:00' },
+    { id: 5, name: '陈总',  role: 'BOSS',    dept: '总经办',     deptId: null, managerId: null, email: 'chenzong@company.com', phone: '135****7890', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_005', employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'manual', lastSyncedAt: '2026-03-12 06:00' },
+    { id: 6, name: '刘管理', role: 'ADMIN',   dept: '系统管理',   deptId: null, managerId: 5, email: 'liuadmin@company.com',  phone: '133****2345', isActive: true,  identitySource: 'local',    dingtalkUserId: null,     employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'manual', lastSyncedAt: null },
+    { id: 7, name: '黄小明', role: 'EMPLOYEE', dept: '硬件部',   deptId: 12, managerId: 3, email: 'huangxm@company.com',   phone: '138****5521', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_007', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-11 14:30' },
+    { id: 8, name: '吴传庆', role: 'MANAGER', dept: '商务中心',  deptId: 5,  managerId: 5, email: 'wuchuanqing@company.com', phone: '139****8832', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_008', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-10 09:15' },
+    { id: 9, name: '叶晶敏', role: 'MANAGER', dept: 'DGC数字选品中心', deptId: 2, managerId: 5, email: 'yejingmin@company.com', phone: '132****6677', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_009', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-12 06:00' },
+    { id: 10, name: '刘铮',  role: 'MANAGER', dept: '财务中心',  deptId: 3,  managerId: 5, email: 'liuzheng@company.com',   phone: '131****4433', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_010', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-12 06:00' },
   ],
   departments: [
-    { id: 1, name: '产品部', leader: '王强', members: 8, planRate: 87 },
-    { id: 2, name: '技术部', leader: '赵鹏', members: 12, planRate: 92 },
-    { id: 3, name: '市场部', leader: '孙丽', members: 6, planRate: 75 },
-    { id: 4, name: '运营部', leader: '周磊', members: 5, planRate: 80 },
-    { id: 5, name: '人力资源部', leader: '赵敏', members: 3, planRate: 100 },
+    // L1 一级部门
+    { id: 1,  name: '技术事业部',     level: 1, parentId: null, leader: '吴文建', members: 18, planRate: 92, highPriorityQuota: 3, isActive: true },
+    { id: 2,  name: 'DGC数字选品中心', level: 1, parentId: null, leader: '叶晶敏', members: 12, planRate: 87, highPriorityQuota: 3, isActive: true },
+    { id: 3,  name: '财务中心',       level: 1, parentId: null, leader: '刘铮',   members: 9,  planRate: 95, highPriorityQuota: 2, isActive: true },
+    { id: 4,  name: '行政人事中心',   level: 1, parentId: null, leader: '张曼丽', members: 11, planRate: 90, highPriorityQuota: 2, isActive: true },
+    { id: 5,  name: '商务中心',       level: 1, parentId: null, leader: '吴传庆', members: 14, planRate: 83, highPriorityQuota: 3, isActive: true },
+    { id: 6,  name: '客户服务中心',   level: 1, parentId: null, leader: '张雯',   members: 8,  planRate: 88, highPriorityQuota: 2, isActive: true },
+    { id: 7,  name: '物流中心',       level: 1, parentId: null, leader: '陈文鑫', members: 16, planRate: 78, highPriorityQuota: 3, isActive: true },
+    { id: 8,  name: '关务事业部',     level: 1, parentId: null, leader: '李海荣', members: 7,  planRate: 91, highPriorityQuota: 2, isActive: true },
+    // L2 二级部门 - 技术事业部
+    { id: 11, name: '软件部',   level: 2, parentId: 1, leader: null, members: 12, planRate: 93, highPriorityQuota: 3, isActive: true },
+    { id: 12, name: '硬件部',   level: 2, parentId: 1, leader: null, members: 6,  planRate: 90, highPriorityQuota: 3, isActive: true },
+    // L2 - DGC数字选品中心
+    { id: 21, name: '供应链部', level: 2, parentId: 2, leader: null, members: 5,  planRate: 86, highPriorityQuota: 3, isActive: true },
+    { id: 22, name: '运营部',   level: 2, parentId: 2, leader: null, members: 4,  planRate: 88, highPriorityQuota: 3, isActive: true },
+    { id: 23, name: '私域部',   level: 2, parentId: 2, leader: null, members: 3,  planRate: 85, highPriorityQuota: 2, isActive: true },
+    // L2 - 财务中心
+    { id: 31, name: '内控规划部', level: 2, parentId: 3, leader: null, members: 3, planRate: 96, highPriorityQuota: 2, isActive: true },
+    { id: 32, name: '财务税筹部', level: 2, parentId: 3, leader: null, members: 4, planRate: 95, highPriorityQuota: 2, isActive: true },
+    { id: 33, name: '结算分析部', level: 2, parentId: 3, leader: null, members: 2, planRate: 94, highPriorityQuota: 2, isActive: true },
+    // L2 - 行政人事中心
+    { id: 41, name: '行政部', level: 2, parentId: 4, leader: null, members: 3, planRate: 92, highPriorityQuota: 2, isActive: true },
+    { id: 42, name: '人事部', level: 2, parentId: 4, leader: null, members: 5, planRate: 90, highPriorityQuota: 2, isActive: true },
+    { id: 43, name: '采购部', level: 2, parentId: 4, leader: null, members: 3, planRate: 88, highPriorityQuota: 2, isActive: true },
+    // L2 - 商务中心
+    { id: 51, name: '商务一组', level: 2, parentId: 5, leader: null, members: 4, planRate: 84, highPriorityQuota: 3, isActive: true },
+    { id: 52, name: '商务二组', level: 2, parentId: 5, leader: null, members: 4, planRate: 82, highPriorityQuota: 3, isActive: true },
+    { id: 53, name: '商务三组', level: 2, parentId: 5, leader: null, members: 3, planRate: 83, highPriorityQuota: 3, isActive: true },
+    { id: 54, name: '报价部',   level: 2, parentId: 5, leader: null, members: 3, planRate: 85, highPriorityQuota: 2, isActive: true },
+    // L2 - 客户服务中心
+    { id: 61, name: '质控部',     level: 2, parentId: 6, leader: null, members: 3, planRate: 90, highPriorityQuota: 2, isActive: true },
+    { id: 62, name: '风控部',     level: 2, parentId: 6, leader: null, members: 2, planRate: 87, highPriorityQuota: 2, isActive: true },
+    { id: 63, name: '客户服务部', level: 2, parentId: 6, leader: null, members: 3, planRate: 88, highPriorityQuota: 2, isActive: true },
+    // L2 - 物流中心
+    { id: 71, name: '国内物流部', level: 2, parentId: 7, leader: null, members: 9,  planRate: 79, highPriorityQuota: 3, isActive: true },
+    { id: 72, name: '跨境物流部', level: 2, parentId: 7, leader: null, members: 7,  planRate: 77, highPriorityQuota: 3, isActive: true },
+    // L2 - 关务事业部
+    { id: 81, name: '跨境通关部', level: 2, parentId: 8, leader: null, members: 3, planRate: 92, highPriorityQuota: 2, isActive: true },
+    { id: 82, name: '报关事务部', level: 2, parentId: 8, leader: null, members: 2, planRate: 90, highPriorityQuota: 2, isActive: true },
+    { id: 83, name: '物流运输部', level: 2, parentId: 8, leader: null, members: 2, planRate: 91, highPriorityQuota: 2, isActive: true },
   ],
   projects: [
     { id: 1, name: 'WeekSync v2.0', level: 'company', status: 'approved', dept: '技术部', creator: '陈总', code: 'PRJ-001', isActive: true, isArchived: false },
@@ -2206,7 +2243,10 @@ const AdminPersonnel = {
           </select>
           <select v-model="deptFilter" style="flex:1;min-width:90px;font-size:12px;">
             <option value="all">全部部门</option>
-            <option v-for="d in store.departments" :key="d.id" :value="d.name">{{ d.name }}</option>
+            <optgroup v-for="l1 in l1Depts" :key="l1.id" :label="l1.name">
+              <option :value="l1.name">{{ l1.name }}（全部）</option>
+              <option v-for="l2 in l2Depts(l1.id)" :key="l2.id" :value="l2.name">　{{ l2.name }}</option>
+            </optgroup>
           </select>
         </div>
 
@@ -2346,46 +2386,61 @@ const AdminPersonnel = {
           🔵 组织架构以钉钉为主数据源，每日凌晨自动同步。如需调整，请在钉钉后台修改。
         </div>
 
-        <!-- Dept Tree -->
-        <div v-for="d in deptTree" :key="d.id" style="margin-bottom:10px;">
-          <!-- L1 Dept -->
-          <div style="background:var(--surface);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-sm);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <!-- Dept Tree: L1 -> L2 -->
+        <div v-for="d1 in deptTree" :key="d1.id" style="margin-bottom:12px;">
+          <!-- L1 Header -->
+          <div style="background:var(--primary);border-radius:12px 12px 0 0;padding:12px 14px;color:white;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
               <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-size:16px;">🏢</span>
+                <span style="font-size:18px;">🏢</span>
                 <div>
-                  <div style="font-size:14px;font-weight:600;">{{ d.name }}</div>
-                  <div style="font-size:11px;color:var(--text-3);">负责人：{{ d.leader || '未设置' }} · {{ deptMemberCount(d.id) }} 人</div>
+                  <div style="font-size:14px;font-weight:700;">{{ d1.name }}</div>
+                  <div style="font-size:11px;opacity:0.8;">总监：{{ d1.leader || '未设置' }} · 共 {{ deptMemberCount(d1.id) }} 人</div>
                 </div>
               </div>
               <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--primary-soft);color:var(--primary);">L{{ d.level || 1 }}</span>
-                <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--warning-soft);color:var(--warning);">⭐ 高优 {{ d.highPriorityQuota || 3 }}/人</span>
+                <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.2);">⭐ {{ d1.highPriorityQuota || 3 }}/人</span>
               </div>
             </div>
-
-            <!-- Members in dept -->
-            <div style="display:flex;flex-wrap:wrap;gap:6px;">
-              <div v-for="u in deptMembers(d.id)" :key="u.id"
-                style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--surface-soft);border-radius:20px;font-size:12px;">
-                <div style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:700;" :style="{ background: roleColor(u.role) }">{{ u.name[0] }}</div>
+            <!-- L1 direct members -->
+            <div v-if="deptMembers(d1.id).length" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">
+              <div v-for="u in deptMembers(d1.id)" :key="u.id" style="display:flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(255,255,255,0.15);border-radius:20px;font-size:11px;color:white;">
+                <div style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">{{ u.name[0] }}</div>
                 <span>{{ u.name }}</span>
-                <span style="font-size:10px;padding:0 4px;border-radius:3px;opacity:0.7;" :style="roleTagStyle(u.role)">{{ roleLabel(u.role) }}</span>
-                <span v-if="u.identitySource === 'dingtalk'" style="font-size:9px;color:#1677ff;">🔵</span>
-                <span v-else style="font-size:9px;color:var(--warning);">🟡</span>
+                <span style="font-size:9px;opacity:0.7;">{{ roleLabel(u.role) }}</span>
               </div>
-              <div v-if="!deptMembers(d.id).length" style="font-size:12px;color:var(--text-3);padding:4px;">暂无成员</div>
             </div>
+          </div>
 
-            <!-- High priority quota edit -->
-            <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:12px;">
-              <span style="color:var(--text-3);">高优任务配额（每人每周）</span>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <button style="width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:white;font-size:14px;cursor:pointer;" @click="d.highPriorityQuota = Math.max(1,(d.highPriorityQuota||3)-1)">−</button>
-                <span style="font-weight:700;font-size:14px;">{{ d.highPriorityQuota || 3 }}</span>
-                <button style="width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:white;font-size:14px;cursor:pointer;" @click="d.highPriorityQuota = Math.min(10,(d.highPriorityQuota||3)+1)">+</button>
+          <!-- L2 sub-departments -->
+          <div style="border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;overflow:hidden;">
+            <div v-for="(d2, idx) in l2Depts(d1.id)" :key="d2.id"
+              :style="{ borderTop: idx > 0 ? '1px solid var(--border)' : 'none', padding:'10px 14px', background:'var(--surface)' }">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:11px;color:var(--text-3);">└</span>
+                  <span style="font-size:13px;font-weight:600;">{{ d2.name }}</span>
+                  <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--surface-soft);color:var(--text-3);">{{ l2Members(d2.id).length }} 人</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:10px;color:var(--text-3);">高优 {{ d2.highPriorityQuota || 3 }}/人</span>
+                  <button style="width:20px;height:20px;border-radius:4px;border:1px solid var(--border);background:white;font-size:12px;cursor:pointer;line-height:1;" @click="d2.highPriorityQuota = Math.max(1,(d2.highPriorityQuota||3)-1)">−</button>
+                  <button style="width:20px;height:20px;border-radius:4px;border:1px solid var(--border);background:white;font-size:12px;cursor:pointer;line-height:1;" @click="d2.highPriorityQuota = Math.min(10,(d2.highPriorityQuota||3)+1)">+</button>
+                </div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;">
+                <div v-for="u in l2Members(d2.id)" :key="u.id"
+                  style="display:flex;align-items:center;gap:4px;padding:3px 8px;background:var(--surface-soft);border-radius:20px;font-size:11px;">
+                  <div style="width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:700;" :style="{ background: roleColor(u.role) }">{{ u.name[0] }}</div>
+                  <span>{{ u.name }}</span>
+                  <span style="font-size:9px;padding:0 4px;border-radius:3px;" :style="roleTagStyle(u.role)">{{ roleLabel(u.role) }}</span>
+                  <span v-if="u.identitySource === 'dingtalk'" style="font-size:9px;color:#1677ff;">🔵</span>
+                  <span v-else style="font-size:9px;color:var(--warning);">🟡</span>
+                </div>
+                <div v-if="!l2Members(d2.id).length" style="font-size:11px;color:var(--text-3);">暂无成员</div>
               </div>
             </div>
+            <div v-if="!l2Depts(d1.id).length" style="padding:10px 14px;font-size:12px;color:var(--text-3);">无二级部门</div>
           </div>
         </div>
 
@@ -2450,13 +2505,17 @@ const AdminPersonnel = {
       return list;
     },
     deptTree() {
-      return [...store.departments].sort((a, b) => (a.level || 1) - (b.level || 1));
+      return store.departments.filter(d => d.level === 1);
+    },
+    l1Depts() {
+      return store.departments.filter(d => d.level === 1);
     },
     unassignedMembers() {
       return store.users.filter(u => !u.deptId && u.isActive !== false);
     }
   },
   methods: {
+    l2Depts(parentId) { return store.departments.filter(d => d.level === 2 && d.parentId === parentId); },
     roleLabel(r) { return { EMPLOYEE:'员工', MANAGER:'负责人', HR:'HR', ADMIN:'管理员', BOSS:'CEO' }[r] || r; },
     roleColor(r) { return { EMPLOYEE:'var(--primary)', MANAGER:'var(--success)', HR:'var(--violet)', ADMIN:'var(--danger)', BOSS:'var(--warning)' }[r] || '#999'; },
     roleTagStyle(r) {
@@ -2468,8 +2527,16 @@ const AdminPersonnel = {
       const mgr = this.getManager(u);
       return mgr ? this.getManager(mgr) : null;
     },
-    deptMemberCount(deptId) { return store.users.filter(u => u.deptId === deptId).length; },
-    deptMembers(deptId) { return store.users.filter(u => u.deptId === deptId && u.isActive !== false); },
+    deptMemberCount(deptId) {
+      const l2ids = store.departments.filter(d => d.parentId === deptId).map(d => d.id);
+      return store.users.filter(u => u.deptId === deptId || l2ids.includes(u.deptId)).length;
+    },
+    deptMembers(deptId) {
+      return store.users.filter(u => u.deptId === deptId && u.isActive !== false);
+    },
+    l2Members(l2DeptId) {
+      return store.users.filter(u => u.deptId === l2DeptId && u.isActive !== false);
+    },
     startEditUser(u) {
       this.editingUserId = u.id;
       this.editForm = { userId: u.id, role: u.role, managerId: u.managerId || null, reviewerSyncMode: u.reviewerSyncMode || 'auto', seniorReviewerSyncMode: u.seniorReviewerSyncMode || 'auto' };
