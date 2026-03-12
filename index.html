@@ -995,8 +995,8 @@ const MyPlansPage = {
       <!-- Header with view toggle -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div style="font-size:20px;font-weight:700;">{{ view === 'my' ? (isManager ? '我的计划' : '计划') : '团队计划' }}</div>
-        <button class="btn btn-sm btn-outline" @click="view = view === 'my' ? 'team' : 'my'" style="font-size:13px;padding:5px 14px;border-radius:20px;">
-          {{ view === 'my' ? '👥 团队计划' : (isManager ? '📝 我的计划' : '📝 个人计划') }}
+        <button v-if="isManager" class="btn btn-sm btn-outline" @click="view = view === 'my' ? 'team' : 'my'" style="font-size:13px;padding:5px 14px;border-radius:20px;">
+          {{ view === 'my' ? '👥 团队计划' : '📝 我的计划' }}
         </button>
       </div>
 
