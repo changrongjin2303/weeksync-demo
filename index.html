@@ -2007,369 +2007,496 @@ const ExecutionPage = {
 }
 // Review Page
 const ReviewPage = {
-  data() { return { period: 'week', tab: 'review', selectedMonth: '2026-03', selectedQuarter: 'Q1', selectedYear: '2026' }; },
+  data() { return {
+    period: 'week',
+    selectedWeek: 'W10', selectedMonth: '03', selectedQuarter: 'Q1', selectedYear: '2026',
+    showAiFullText: false
+  }; },
   template: `
     <div class="page">
-      <!-- Period Tabs -->
-      <div class="tabs" style="margin-bottom:0;">
-        <div class="tab" :class="{ active: period === 'week' }" @click="period = 'week'">周复盘</div>
-        <div class="tab" :class="{ active: period === 'month' }" @click="period = 'month'">月复盘</div>
-        <div class="tab" :class="{ active: period === 'quarter' }" @click="period = 'quarter'">季度复盘</div>
-        <div class="tab" :class="{ active: period === 'year' }" @click="period = 'year'">年度复盘</div>
+      <!-- Header -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:22px;font-weight:700;line-height:1.2;">复盘中心</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:3px;">围绕任务结果、项目推进和工作动态沉淀{{ periodSubtitle }}复盘。</div>
+      </div>
+
+      <!-- Period Tabs (pill style) -->
+      <div style="display:flex;background:#f0f0f5;border-radius:12px;padding:3px;margin-bottom:16px;gap:2px;">
+        <button v-for="p in periods" :key="p.value"
+          :style="period === p.value ? 'background:white;color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.1);' : 'background:transparent;color:var(--text-3);'"
+          style="flex:1;border:none;padding:8px 4px;border-radius:10px;font-size:13px;cursor:pointer;transition:all 0.15s;"
+          @click="period = p.value">{{ p.label }}</button>
       </div>
 
       <!-- Period Selector -->
-      <week-selector v-if="period === 'week'" />
-      <div v-if="period === 'month'" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;">
-        <button class="btn btn-outline btn-sm" @click="prevMonth">◀</button>
-        <span style="font-size:14px;font-weight:600;">{{ selectedMonth }}</span>
-        <button class="btn btn-outline btn-sm" @click="nextMonth">▶</button>
-      </div>
-      <div v-if="period === 'quarter'" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;">
-        <button class="btn btn-outline btn-sm" @click="prevQuarter">◀</button>
-        <span style="font-size:14px;font-weight:600;">2026年 {{ selectedQuarter }}</span>
-        <button class="btn btn-outline btn-sm" @click="nextQuarter">▶</button>
-      </div>
-      <div v-if="period === 'year'" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;">
-        <button class="btn btn-outline btn-sm" @click="selectedYear = String(Number(selectedYear)-1)">◀</button>
-        <span style="font-size:14px;font-weight:600;">{{ selectedYear }}年</span>
-        <button class="btn btn-outline btn-sm" @click="selectedYear = String(Number(selectedYear)+1)">▶</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;margin-bottom:14px;">
+        <button style="background:none;border:none;font-size:18px;color:var(--text-2);cursor:pointer;padding:8px 12px;" @click="prevPeriod">‹</button>
+        <div style="text-align:center;">
+          <div style="font-size:16px;font-weight:700;">{{ periodLabel }}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:1px;">{{ periodRange }}</div>
+        </div>
+        <button style="background:none;border:none;font-size:18px;color:var(--text-2);cursor:pointer;padding:8px 12px;" @click="nextPeriod">›</button>
       </div>
 
-      <!-- Sub Tabs (for week period) -->
-      <div v-if="period === 'week'" class="tabs" style="margin-top:4px;">
-        <div class="tab" :class="{ active: tab === 'review' }" @click="tab = 'review'">复盘详情</div>
-        <div class="tab" :class="{ active: tab === 'ai' }" @click="tab = 'ai'">AI周报</div>
-        <div class="tab" :class="{ active: tab === 'stats' }" @click="tab = 'stats'">统计分析</div>
-      </div>
-
-      <!-- ==================== WEEK REVIEW ==================== -->
+      <!-- ======== WEEK VIEW ======== -->
       <template v-if="period === 'week'">
-        <!-- Review Tab -->
-        <div v-if="tab === 'review'">
-          <div v-if="reviewedPlan" class="card">
-            <div class="card-title"><span class="icon">📊</span>{{ reviewedPlan.weekCode }} 复盘结果</div>
-            <div style="display:flex;gap:12px;margin-bottom:12px;">
-              <div style="flex:1;text-align:center;padding:10px;background:var(--success-soft);border-radius:8px;">
-                <div style="font-size:24px;font-weight:700;color:var(--success);">2</div>
-                <div style="font-size:11px;color:var(--success);">已完成</div>
-              </div>
-              <div style="flex:1;text-align:center;padding:10px;background:var(--danger-soft);border-radius:8px;">
-                <div style="font-size:24px;font-weight:700;color:var(--danger);">1</div>
-                <div style="font-size:11px;color:var(--danger);">未完成</div>
-              </div>
-              <div style="flex:1;text-align:center;padding:10px;background:var(--violet-soft);border-radius:8px;">
-                <div style="font-size:24px;font-weight:700;color:var(--violet);">7.3</div>
-                <div style="font-size:11px;color:var(--violet);">平均得分</div>
-              </div>
+        <!-- 本周回顾 card -->
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+            <div style="font-size:15px;font-weight:700;">本周回顾</div>
+            <div style="font-size:12px;color:var(--text-3);">2026-{{ selectedWeek }} 本周</div>
+          </div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">查看当前周的完成率、动态和复盘生成情况。</div>
+          <!-- Legend -->
+          <div style="display:flex;gap:12px;font-size:11px;color:var(--text-2);margin-bottom:12px;">
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:3px;"></span>全部完成</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:3px;"></span>获权延期</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:3px;"></span>有未完成任务</span>
+          </div>
+          <!-- Week card -->
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px;margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:13px;font-weight:600;color:#15803d;">2026-{{ selectedWeek }}</span>
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;"></span>
             </div>
-            <div v-for="t in reviewedPlan.tasks" :key="t.id" class="task-item">
-              <div class="task-body">
-                <div class="task-name">{{ t.title }}</div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-                  <span class="badge" :class="t.reviewResult === 'completed' ? 'badge-approved' : 'badge-returned'">
-                    {{ t.reviewResult === 'completed' ? '✅ 完成' : '⚠️ 未完成' }}
-                  </span>
-                  <span v-if="t.score" class="stars">
-                    <span v-for="s in 5" :key="s" class="star" :class="{ filled: s <= Math.round(t.score/2) }">★</span>
-                  </span>
-                  <span v-if="t.score" style="font-size:13px;font-weight:600;color:var(--warning);">{{ t.score }}/10</span>
-                </div>
-              </div>
+            <div style="font-size:28px;font-weight:800;color:#16a34a;margin-bottom:4px;">100%</div>
+            <div style="font-size:12px;color:#166534;margin-bottom:2px;">3 任务 · 4 动态</div>
+            <div style="font-size:12px;color:#166534;">已生成复盘</div>
+          </div>
+          <!-- Data stats -->
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">当前周数据明细</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px;">
+            <div style="background:#eff6ff;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#3b82f6;margin-bottom:3px;">完成率</div>
+              <div style="font-size:16px;font-weight:700;color:#2563eb;">100%</div>
+            </div>
+            <div style="background:#f0fdf4;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#22c55e;margin-bottom:3px;">已完成</div>
+              <div style="font-size:16px;font-weight:700;color:#16a34a;">3</div>
+            </div>
+            <div style="background:#fffbeb;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#f59e0b;margin-bottom:3px;">获权延期</div>
+              <div style="font-size:16px;font-weight:700;color:#d97706;">0</div>
+            </div>
+            <div style="background:#fef2f2;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#f87171;margin-bottom:3px;">未完成</div>
+              <div style="font-size:16px;font-weight:700;color:#dc2626;">0</div>
             </div>
           </div>
-          <div v-else class="empty-state">
-            <div class="empty-icon">📊</div>
-            <div class="empty-text">本周复盘尚未完成</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">涉及项目</div>
+              <div style="font-size:16px;font-weight:700;color:var(--text);">1</div>
+            </div>
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">涉及部门</div>
+              <div style="font-size:16px;font-weight:700;color:var(--text);">2</div>
+            </div>
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">协作项目</div>
+              <div style="font-size:16px;font-weight:700;color:var(--text);">0</div>
+            </div>
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">动态</div>
+              <div style="font-size:16px;font-weight:700;color:var(--text);">4</div>
+            </div>
           </div>
         </div>
 
-        <!-- AI Report Tab -->
-        <div v-if="tab === 'ai'">
-          <div class="ai-card">
-            <div class="ai-header">
-              <span style="font-size:24px;">🤖</span>
-              <span class="ai-tag">AI 生成</span>
-              <span style="font-size:13px;font-weight:600;">智能周报</span>
-            </div>
-            <div style="font-size:13px;line-height:1.8;color:var(--text);">
-              <p><strong>📋 本周概述</strong></p>
-              <p>本周完成了产品原型设计和周会PPT准备等2项任务，新功能调研因外部依赖未能如期完成。整体完成率67%，建议下周优先处理遗留任务。</p>
-              <br/>
-              <p><strong>✅ 完成亮点</strong></p>
-              <p>• 产品原型设计高质量完成（9/10分），获得团队好评</p>
-              <p>• 周会PPT内容充实、条理清晰（8/10分）</p>
-              <br/>
-              <p><strong>⚠️ 待改进项</strong></p>
-              <p>• 新功能调研需要提前确认外部数据可用性</p>
-              <p>• 建议拆分大任务为可追踪的子任务</p>
-              <br/>
-              <p><strong>📈 下周建议</strong></p>
-              <p>• 优先完成遗留的新功能调研</p>
-              <p>• 与技术团队确认API接口对接时间</p>
-            </div>
+        <!-- 本周闭环 card -->
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:16px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="flex:1;">
+            <div style="font-size:16px;font-weight:700;color:#16a34a;margin-bottom:4px;">本周闭环已完成</div>
+            <div style="font-size:12px;color:#166534;">AI周复盘已生成，可以继续编辑补充结论和沉淀。</div>
           </div>
-          <button class="btn btn-outline btn-block" @click="toast('AI周报已重新生成')">🔄 重新生成</button>
+          <div style="text-align:right;font-size:11px;color:#16a34a;line-height:1.6;flex-shrink:0;margin-left:10px;">
+            <div>周复盘已生成</div>
+            <div>2026-{{ selectedWeek }}</div>
+            <div>完成率 100%</div>
+          </div>
         </div>
 
-        <!-- Stats Tab -->
-        <div v-if="tab === 'stats'">
-          <div class="card">
-            <div class="card-title"><span class="icon">📈</span>12周趋势</div>
-            <div class="chart-placeholder">
-              <div class="bar-chart">
-                <div v-for="(v, i) in [65,72,80,75,85,78,90,82,88,67,75,0]" :key="i" class="bar-col">
-                  <div class="bar" :style="{ height: v + '%', background: v >= 80 ? 'var(--success)' : v >= 60 ? 'var(--primary)' : 'var(--warning)' }"></div>
-                  <div class="bar-label">W{{ i + 1 }}</div>
-                </div>
+        <!-- AI周复盘 card -->
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;">
+            <div style="font-size:15px;font-weight:700;">AI周复盘</div>
+            <div style="font-size:12px;color:var(--text-3);">2026-{{ selectedWeek }}</div>
+          </div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">可生成和编辑当前账号周复盘</div>
+          <!-- AI summary box -->
+          <div style="background:#f8f9fa;border-radius:12px;padding:14px;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;margin-bottom:8px;">2026-{{ selectedWeek }} 复盘摘要</div>
+            <div style="font-size:13px;line-height:1.7;color:var(--text-2);">
+              {{ aiSummaryText }}
+            </div>
+            <div v-if="!showAiFullText" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;color:var(--text-3);">默认收起，点击查看完整内容</span>
+              <span style="font-size:12px;color:var(--primary);cursor:pointer;" @click="showAiFullText = true">查看详情</span>
+            </div>
+          </div>
+          <!-- Action buttons -->
+          <div style="display:flex;gap:8px;">
+            <button style="flex:1;padding:12px;border:1px solid var(--border);background:white;border-radius:12px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;" @click="toast('编辑功能开发中')">✏ 编辑复盘</button>
+            <button style="flex:1;padding:12px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;" @click="toast('复盘已重新生成')">↺ 重新生成周复盘</button>
+          </div>
+        </div>
+
+        <!-- 项目维度分析 card -->
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+            <span style="color:var(--primary);">↗</span>
+            <span style="font-size:15px;font-weight:700;">项目维度分析</span>
+          </div>
+          <!-- Project card -->
+          <div style="border:1px solid var(--border);border-radius:12px;padding:12px 14px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+              <div>
+                <div style="font-size:14px;font-weight:600;">智能设备巡检系统</div>
+                <div style="font-size:11px;color:var(--text-3);">部门级 · 硬件部</div>
+              </div>
+              <div style="text-align:right;font-size:11px;color:var(--text-3);line-height:1.6;">
+                <div>6 任务</div>
+                <div>7 动态</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0;">
+              <div style="text-align:center;">
+                <div style="font-size:11px;color:var(--text-3);">完成</div>
+                <div style="font-size:16px;font-weight:700;">4</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:11px;color:var(--text-3);">进行中</div>
+                <div style="font-size:16px;font-weight:700;">1</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:11px;color:var(--text-3);">待开始</div>
+                <div style="font-size:16px;font-weight:700;">1</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:11px;color:var(--text-3);">参与人</div>
+                <div style="font-size:16px;font-weight:700;">2</div>
+              </div>
+            </div>
+            <div style="border-top:1px solid var(--bg);padding-top:8px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">
+                <span style="font-weight:500;">刘涛</span><span style="color:var(--text-3);">3 任务 · 4 动态</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">
+                <span style="font-weight:500;">韩梅梅</span><span style="color:var(--text-3);">3 任务 · 3 动态</span>
               </div>
             </div>
           </div>
-          <div class="stat-grid">
-            <div class="stat-card blue"><div class="stat-label">总任务数</div><div class="stat-value blue">36</div></div>
-            <div class="stat-card green"><div class="stat-label">完成率</div><div class="stat-value green">78%</div></div>
-            <div class="stat-card orange"><div class="stat-label">平均得分</div><div class="stat-value orange">7.8</div></div>
-            <div class="stat-card violet"><div class="stat-label">高优完成</div><div class="stat-value violet">92%</div></div>
+        </div>
+
+        <!-- 每日工作动态摘要 card -->
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+            <span style="color:var(--primary);">📄</span>
+            <span style="font-size:15px;font-weight:700;">每日工作动态摘要</span>
+          </div>
+          <div v-for="log in weekLogs" :key="log.date" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bg);">
+            <span style="font-size:13px;font-weight:500;">{{ log.date }}</span>
+            <span style="font-size:12px;color:var(--text-3);">{{ log.count }} 条</span>
           </div>
         </div>
       </template>
 
-      <!-- ==================== MONTH REVIEW ==================== -->
+      <!-- ======== MONTH VIEW ======== -->
       <template v-if="period === 'month'">
-        <div class="card">
-          <div class="card-title"><span class="icon">📅</span>{{ selectedMonth }} 月度复盘</div>
-          <div style="display:flex;gap:8px;margin-bottom:14px;">
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--primary-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--primary);">4</div>
-              <div style="font-size:10px;color:var(--primary);">覆盖周数</div>
+        <!-- 历史周回顾 card -->
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+            <div style="font-size:15px;font-weight:700;">历史周回顾</div>
+            <div style="font-size:12px;color:var(--text-3);">2026年{{ selectedMonth }}月周全览</div>
+          </div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">点击任意周卡片，直接切到对应周复盘。</div>
+          <!-- Legend -->
+          <div style="display:flex;gap:12px;font-size:11px;color:var(--text-2);margin-bottom:12px;">
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:3px;"></span>全部完成</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:3px;"></span>获权延期</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:3px;"></span>有未完成任务</span>
+          </div>
+          <!-- Week cards grid (3 columns) -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+            <div v-for="w in monthWeekCards" :key="w.week"
+              :style="{
+                background: w.status === 'complete' ? '#f0fdf4' : w.status === 'incomplete' ? '#fef2f2' : '#f8f9fa',
+                border: (selectedWeek === w.week ? '2px solid var(--primary)' : '1.5px solid ') + (w.status === 'complete' ? '#86efac' : w.status === 'incomplete' ? '#fca5a5' : '#e5e7eb'),
+                borderRadius: '10px', padding: '10px 8px', cursor: 'pointer'
+              }"
+              @click="selectedWeek = w.week; period = 'week'">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:12px;font-weight:600;" :style="{ color: w.status === 'complete' ? '#15803d' : w.status === 'incomplete' ? '#dc2626' : '#6b7280' }">2026-{{ w.week }}</span>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;" :style="{ background: w.status === 'complete' ? '#22c55e' : w.status === 'incomplete' ? '' : '', border: w.status !== 'complete' ? '1.5px solid #d1d5db' : 'none' }"></span>
+              </div>
+              <div style="font-size:15px;font-weight:800;" :style="{ color: w.status === 'complete' ? '#16a34a' : w.status === 'incomplete' ? '#dc2626' : '#9ca3af' }">{{ w.rate }}%</div>
+              <div style="font-size:10px;margin-top:2px;" :style="{ color: w.status === 'complete' ? '#166534' : w.status === 'incomplete' ? '#b91c1c' : '#9ca3af' }">{{ w.tasks }} 任务 · {{ w.logs }} 动态</div>
+              <div style="font-size:10px;margin-top:1px;" :style="{ color: w.status === 'complete' ? '#16a34a' : '#ef4444' }">{{ w.generated ? '已生成复盘' : '未生成复盘' }}</div>
             </div>
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--success-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--success);">12</div>
-              <div style="font-size:10px;color:var(--success);">完成任务</div>
+          </div>
+          <!-- Month stats -->
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">当前月数据明细</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px;">
+            <div style="background:#eff6ff;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#3b82f6;margin-bottom:3px;">完成率</div>
+              <div style="font-size:15px;font-weight:700;color:#2563eb;">100%</div>
             </div>
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--danger-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--danger);">3</div>
-              <div style="font-size:10px;color:var(--danger);">未完成</div>
+            <div style="background:#f0fdf4;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#22c55e;margin-bottom:3px;">已完成</div>
+              <div style="font-size:15px;font-weight:700;color:#16a34a;">22</div>
             </div>
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--violet-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--violet);">7.8</div>
-              <div style="font-size:10px;color:var(--violet);">月均分</div>
+            <div style="background:#fffbeb;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#f59e0b;margin-bottom:3px;">获权延期</div>
+              <div style="font-size:15px;font-weight:700;color:#d97706;">0</div>
+            </div>
+            <div style="background:#fef2f2;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#f87171;margin-bottom:3px;">未完成</div>
+              <div style="font-size:15px;font-weight:700;color:#dc2626;">3</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">涉及项目</div>
+              <div style="font-size:15px;font-weight:700;">2</div>
+            </div>
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">涉及部门</div>
+              <div style="font-size:15px;font-weight:700;">4</div>
+            </div>
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">协作项目</div>
+              <div style="font-size:15px;font-weight:700;">0</div>
+            </div>
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">动态</div>
+              <div style="font-size:15px;font-weight:700;">10</div>
             </div>
           </div>
         </div>
 
-        <!-- Weekly breakdown -->
-        <div class="section-title">📊 各周完成情况</div>
-        <div v-for="w in monthWeeks" :key="w.week" class="card" style="padding:12px 14px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:14px;font-weight:600;">{{ w.week }}</div>
-            <span class="badge" :class="w.rate >= 80 ? 'badge-approved' : w.rate >= 60 ? 'badge-submitted' : 'badge-returned'">{{ w.rate }}%</span>
+        <!-- 本月闭环 card -->
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:16px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="flex:1;">
+            <div style="font-size:16px;font-weight:700;color:#16a34a;margin-bottom:4px;">本月闭环已完成</div>
+            <div style="font-size:12px;color:#166534;">AI月度复盘已生成，可以继续编辑补充结论和沉淀。</div>
           </div>
-          <div style="display:flex;gap:12px;font-size:12px;color:var(--text-3);">
-            <span>✅ {{ w.done }} 完成</span>
-            <span>⚠️ {{ w.undone }} 未完成</span>
-            <span>⭐ {{ w.score }} 均分</span>
+          <div style="text-align:right;font-size:11px;color:#16a34a;line-height:1.6;flex-shrink:0;margin-left:10px;">
+            <div>月复盘已生成</div>
+            <div>2026年{{ selectedMonth }}月</div>
+            <div>完成率 100%</div>
           </div>
-          <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" :style="{ width: w.rate + '%', background: w.rate >= 80 ? 'var(--success)' : w.rate >= 60 ? 'var(--warning)' : 'var(--danger)' }"></div></div>
         </div>
 
-        <!-- AI Monthly Summary -->
-        <div class="ai-card" style="margin-top:12px;">
-          <div class="ai-header">
-            <span style="font-size:24px;">🤖</span>
-            <span class="ai-tag">AI 生成</span>
-            <span style="font-size:13px;font-weight:600;">月度总结</span>
+        <!-- AI月度复盘 -->
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;">
+            <div style="font-size:15px;font-weight:700;">AI月度复盘</div>
+            <div style="font-size:12px;color:var(--text-3);">2026年{{ selectedMonth }}月</div>
           </div>
-          <div style="font-size:13px;line-height:1.8;color:var(--text);">
-            <p>本月共完成12项任务，整体完成率80%。工作节奏稳定，第2周表现最佳（90%完成率）。建议关注高优任务的时间分配，避免月末堆积。</p>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">可生成和编辑当前账号月度复盘</div>
+          <div style="background:#f8f9fa;border-radius:12px;padding:14px;margin-bottom:10px;">
+            <div style="font-size:13px;line-height:1.7;color:var(--text-2);">本月共覆盖6周，完成22项任务。整体完成率稳定在100%，智能设备巡检系统项目推进顺利。建议下月持续关注跨部门协作效率与关键交付物的提前验收。</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button style="flex:1;padding:11px;border:1px solid var(--border);background:white;border-radius:12px;font-size:13px;cursor:pointer;" @click="toast('编辑功能开发中')">✏ 编辑复盘</button>
+            <button style="flex:1;padding:11px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:13px;cursor:pointer;" @click="toast('月度复盘已重新生成')">↺ 重新生成月复盘</button>
           </div>
         </div>
       </template>
 
-      <!-- ==================== QUARTER REVIEW ==================== -->
+      <!-- ======== QUARTER VIEW ======== -->
       <template v-if="period === 'quarter'">
-        <div class="card">
-          <div class="card-title"><span class="icon">📊</span>2026年 {{ selectedQuarter }} 季度复盘</div>
-          <div style="display:flex;gap:8px;margin-bottom:14px;">
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--primary-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--primary);">12</div>
-              <div style="font-size:10px;color:var(--primary);">覆盖周数</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--success-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--success);">38</div>
-              <div style="font-size:10px;color:var(--success);">完成任务</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--warning-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--warning);">82%</div>
-              <div style="font-size:10px;color:var(--warning);">完成率</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--violet-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--violet);">7.6</div>
-              <div style="font-size:10px;color:var(--violet);">季均分</div>
-            </div>
+        <!-- 历史周回顾 card -->
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+            <div style="font-size:15px;font-weight:700;">历史周回顾</div>
+            <div style="font-size:12px;color:var(--text-3);">2026年{{ selectedQuarter }}周全览</div>
           </div>
-        </div>
-
-        <!-- Monthly breakdown -->
-        <div class="section-title">📅 各月完成情况</div>
-        <div v-for="m in quarterMonths" :key="m.month" class="card" style="padding:12px 14px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:14px;font-weight:600;">{{ m.month }}</div>
-            <span class="badge" :class="m.rate >= 80 ? 'badge-approved' : m.rate >= 60 ? 'badge-submitted' : 'badge-returned'">{{ m.rate }}%</span>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">点击任意周卡片，直接切到对应周复盘。</div>
+          <!-- Legend -->
+          <div style="display:flex;gap:12px;font-size:11px;color:var(--text-2);margin-bottom:12px;">
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:3px;"></span>全部完成</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:3px;"></span>获权延期</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:3px;"></span>有未完成任务</span>
           </div>
-          <div style="display:flex;gap:12px;font-size:12px;color:var(--text-3);">
-            <span>📝 {{ m.tasks }} 任务</span>
-            <span>✅ {{ m.done }} 完成</span>
-            <span>⭐ {{ m.score }} 均分</span>
-          </div>
-          <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" :style="{ width: m.rate + '%', background: m.rate >= 80 ? 'var(--success)' : m.rate >= 60 ? 'var(--warning)' : 'var(--danger)' }"></div></div>
-        </div>
-
-        <!-- Trend chart -->
-        <div class="card">
-          <div class="card-title"><span class="icon">📈</span>季度周趋势</div>
-          <div class="chart-placeholder">
-            <div class="bar-chart">
-              <div v-for="(v, i) in [75,80,85,72,88,90,78,82,85,80,76,82]" :key="i" class="bar-col">
-                <div class="bar" :style="{ height: v + '%', background: v >= 80 ? 'var(--success)' : v >= 60 ? 'var(--primary)' : 'var(--warning)' }"></div>
-                <div class="bar-label">W{{ i + 1 }}</div>
+          <!-- Quarter week cards grid -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;">
+            <div v-for="w in quarterWeekCards" :key="w.week"
+              :style="{
+                background: w.status === 'complete' ? '#f0fdf4' : w.status === 'incomplete' ? '#fef2f2' : '#f8f9fa',
+                border: (selectedWeek === w.week ? '2px solid var(--primary)' : '1.5px solid ') + (w.status === 'complete' ? '#86efac' : w.status === 'incomplete' ? '#fca5a5' : '#e5e7eb'),
+                borderRadius: '10px', padding: '10px 6px', cursor: 'pointer', minHeight: '72px'
+              }"
+              @click="selectedWeek = w.week; period = 'week'">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                <span style="font-size:12px;font-weight:600;" :style="{ color: w.status === 'complete' ? '#15803d' : w.status === 'incomplete' ? '#dc2626' : '#6b7280' }">{{ w.week }}</span>
+                <span v-if="w.status !== 'empty'" style="display:inline-block;width:7px;height:7px;border-radius:50%;" :style="{ background: w.status === 'complete' ? '#22c55e' : '', border: w.status === 'incomplete' ? '1.5px solid #d1d5db' : 'none' }"></span>
               </div>
+              <div style="font-size:11px;" :style="{ color: w.status === 'complete' ? '#16a34a' : w.status === 'incomplete' ? '#dc2626' : '#9ca3af' }">{{ w.status === 'complete' ? '完成' : w.status === 'incomplete' ? '未完' : '空白' }}</div>
             </div>
+          </div>
+          <!-- Quarter stats -->
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">当前季度数据明细</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px;">
+            <div style="background:#eff6ff;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#3b82f6;margin-bottom:3px;">完成率</div>
+              <div style="font-size:15px;font-weight:700;color:#2563eb;">100%</div>
+            </div>
+            <div style="background:#f0fdf4;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#22c55e;margin-bottom:3px;">已完成</div>
+              <div style="font-size:15px;font-weight:700;color:#16a34a;">28</div>
+            </div>
+            <div style="background:#fffbeb;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#f59e0b;margin-bottom:3px;">获权延期</div>
+              <div style="font-size:15px;font-weight:700;color:#d97706;">0</div>
+            </div>
+            <div style="background:#fef2f2;border-radius:10px;padding:10px 6px;">
+              <div style="font-size:10px;color:#f87171;margin-bottom:3px;">未完成</div>
+              <div style="font-size:15px;font-weight:700;color:#dc2626;">3</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;"><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">涉及项目</div><div style="font-size:15px;font-weight:700;">3</div></div>
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;"><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">涉及部门</div><div style="font-size:15px;font-weight:700;">5</div></div>
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;"><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">协作项目</div><div style="font-size:15px;font-weight:700;">1</div></div>
+            <div style="background:#f8f9fa;border-radius:10px;padding:10px 6px;"><div style="font-size:10px;color:var(--text-3);margin-bottom:3px;">动态</div><div style="font-size:15px;font-weight:700;">28</div></div>
           </div>
         </div>
 
-        <div class="ai-card" style="margin-top:12px;">
-          <div class="ai-header">
-            <span style="font-size:24px;">🤖</span>
-            <span class="ai-tag">AI 生成</span>
-            <span style="font-size:13px;font-weight:600;">季度总结</span>
+        <!-- AI季度复盘 -->
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;">
+            <div style="font-size:15px;font-weight:700;">AI季度复盘</div>
+            <div style="font-size:12px;color:var(--text-3);">2026年{{ selectedQuarter }}</div>
           </div>
-          <div style="font-size:13px;line-height:1.8;color:var(--text);">
-            <p>{{ selectedQuarter }}季度整体表现良好，完成率82%，较上季度提升5%。2月表现最佳（85%），建议保持当前工作节奏，持续关注高优任务的按时交付。</p>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">可生成和编辑当前账号季度复盘</div>
+          <div style="background:#f8f9fa;border-radius:12px;padding:14px;margin-bottom:10px;">
+            <div style="font-size:13px;line-height:1.7;color:var(--text-2);">{{ selectedQuarter }}季度共完成28项任务，完成率100%。重点围绕智能设备巡检系统推进，协同跨部门协作顺畅。建议下季度关注项目延期预警机制与高优任务提前识别。</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button style="flex:1;padding:11px;border:1px solid var(--border);background:white;border-radius:12px;font-size:13px;cursor:pointer;" @click="toast('编辑功能开发中')">✏ 编辑复盘</button>
+            <button style="flex:1;padding:11px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:13px;cursor:pointer;" @click="toast('季度复盘已重新生成')">↺ 重新生成季度复盘</button>
           </div>
         </div>
       </template>
 
-      <!-- ==================== YEAR REVIEW ==================== -->
+      <!-- ======== YEAR VIEW ======== -->
       <template v-if="period === 'year'">
-        <div class="card">
-          <div class="card-title"><span class="icon">📊</span>{{ selectedYear }}年 年度复盘</div>
-          <div style="display:flex;gap:8px;margin-bottom:14px;">
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--primary-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--primary);">48</div>
-              <div style="font-size:10px;color:var(--primary);">覆盖周数</div>
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+            <div style="font-size:15px;font-weight:700;">年度月度回顾</div>
+            <div style="font-size:12px;color:var(--text-3);">{{ selectedYear }}年全览</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;">
+            <div v-for="m in yearMonthCards" :key="m.month"
+              :style="{ background: m.status === 'complete' ? '#f0fdf4' : m.status === 'partial' ? '#fffbeb' : '#f8f9fa', border: '1.5px solid ' + (m.status === 'complete' ? '#86efac' : m.status === 'partial' ? '#fde68a' : '#e5e7eb'), borderRadius: '10px', padding: '10px 6px' }">
+              <div style="font-size:12px;font-weight:600;" :style="{ color: m.status === 'complete' ? '#15803d' : m.status === 'partial' ? '#d97706' : '#6b7280' }">{{ m.month }}</div>
+              <div style="font-size:15px;font-weight:700;margin-top:4px;" :style="{ color: m.status === 'complete' ? '#16a34a' : m.status === 'partial' ? '#d97706' : '#9ca3af' }">{{ m.rate }}</div>
+              <div style="font-size:10px;margin-top:2px;" :style="{ color: m.status === 'complete' ? '#166534' : '#9ca3af' }">{{ m.done }} 任务</div>
             </div>
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--success-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--success);">156</div>
-              <div style="font-size:10px;color:var(--success);">完成任务</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--warning-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--warning);">79%</div>
-              <div style="font-size:10px;color:var(--warning);">完成率</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:12px 6px;background:var(--violet-soft);border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:var(--violet);">7.5</div>
-              <div style="font-size:10px;color:var(--violet);">年均分</div>
-            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:8px;">年度数据明细</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="background:#eff6ff;border-radius:10px;padding:10px 6px;"><div style="font-size:10px;color:#3b82f6;margin-bottom:3px;">完成率</div><div style="font-size:15px;font-weight:700;color:#2563eb;">82%</div></div>
+            <div style="background:#f0fdf4;border-radius:10px;padding:10px 6px;"><div style="font-size:10px;color:#22c55e;margin-bottom:3px;">已完成</div><div style="font-size:15px;font-weight:700;color:#16a34a;">156</div></div>
+            <div style="background:#fffbeb;border-radius:10px;padding:10px 6px;"><div style="font-size:10px;color:#f59e0b;margin-bottom:3px;">获权延期</div><div style="font-size:15px;font-weight:700;color:#d97706;">5</div></div>
+            <div style="background:#fef2f2;border-radius:10px;padding:10px 6px;"><div style="font-size:10px;color:#f87171;margin-bottom:3px;">未完成</div><div style="font-size:15px;font-weight:700;color:#dc2626;">12</div></div>
           </div>
         </div>
-
-        <!-- Quarterly breakdown -->
-        <div class="section-title">📅 各季度完成情况</div>
-        <div v-for="q in yearQuarters" :key="q.quarter" class="card" style="padding:12px 14px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:14px;font-weight:600;">{{ q.quarter }}</div>
-            <span class="badge" :class="q.rate >= 80 ? 'badge-approved' : q.rate >= 60 ? 'badge-submitted' : 'badge-returned'">{{ q.rate }}%</span>
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+          <div style="font-size:15px;font-weight:700;margin-bottom:2px;">AI年度复盘</div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">可生成和编辑当前账号年度复盘</div>
+          <div style="background:#f8f9fa;border-radius:12px;padding:14px;margin-bottom:10px;">
+            <div style="font-size:13px;line-height:1.7;color:var(--text-2);">{{ selectedYear }}年度共完成156项任务，整体完成率82%。Q3表现最佳（90%），全年工作节奏稳定。建议新一年聚焦高优任务管理与跨部门协作提效，持续强化项目驱动的工作闭环。</div>
           </div>
-          <div style="display:flex;gap:12px;font-size:12px;color:var(--text-3);">
-            <span>📝 {{ q.tasks }} 任务</span>
-            <span>✅ {{ q.done }} 完成</span>
-            <span>⭐ {{ q.score }} 均分</span>
-          </div>
-          <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" :style="{ width: q.rate + '%', background: q.rate >= 80 ? 'var(--success)' : q.rate >= 60 ? 'var(--warning)' : 'var(--danger)' }"></div></div>
-        </div>
-
-        <!-- Year trend -->
-        <div class="card">
-          <div class="card-title"><span class="icon">📈</span>年度月趋势</div>
-          <div class="chart-placeholder">
-            <div class="bar-chart">
-              <div v-for="(v, i) in [72,75,82,78,85,80,76,83,88,81,79,0]" :key="i" class="bar-col">
-                <div class="bar" :style="{ height: v + '%', background: v >= 80 ? 'var(--success)' : v >= 60 ? 'var(--primary)' : 'var(--warning)' }"></div>
-                <div class="bar-label">{{ i + 1 }}月</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="ai-card" style="margin-top:12px;">
-          <div class="ai-header">
-            <span style="font-size:24px;">🤖</span>
-            <span class="ai-tag">AI 生成</span>
-            <span style="font-size:13px;font-weight:600;">年度总结</span>
-          </div>
-          <div style="font-size:13px;line-height:1.8;color:var(--text);">
-            <p>{{ selectedYear }}年度共完成156项任务，整体完成率79%。Q3表现最佳（85%），全年工作稳步提升。建议新的一年聚焦高优任务管理和跨部门协作效率。</p>
+          <div style="display:flex;gap:8px;">
+            <button style="flex:1;padding:11px;border:1px solid var(--border);background:white;border-radius:12px;font-size:13px;cursor:pointer;" @click="toast('编辑功能开发中')">✏ 编辑复盘</button>
+            <button style="flex:1;padding:11px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:13px;cursor:pointer;" @click="toast('年度复盘已重新生成')">↺ 重新生成年度复盘</button>
           </div>
         </div>
       </template>
     </div>
   `,
   computed: {
-    reviewedPlan() {
-      const uid = currentUser().id;
-      return store.plans.find(p => p.userId === uid && p.status === 'reviewed');
+    periods() { return [{ value:'week', label:'周复盘' }, { value:'month', label:'月复盘' }, { value:'quarter', label:'季度复盘' }, { value:'year', label:'年度复盘' }]; },
+    periodSubtitle() {
+      return { week:'本周', month:'本月', quarter:'本季度', year:'本年度' }[this.period] || '本周';
     },
-    monthWeeks() {
+    periodLabel() {
+      if (this.period === 'week') return '2026-' + this.selectedWeek;
+      if (this.period === 'month') return '2026年' + this.selectedMonth + '月';
+      if (this.period === 'quarter') return '2026年' + this.selectedQuarter;
+      return this.selectedYear + '年';
+    },
+    periodRange() {
+      const weekRanges = { W09:'03/02 - 03/08', W10:'03/09 - 03/15', W11:'03/16 - 03/22', W12:'03/23 - 03/29', W13:'03/30 - 04/05', W14:'04/06 - 04/12' };
+      if (this.period === 'week') return weekRanges[this.selectedWeek] || '';
+      if (this.period === 'month') return '03/01 - 03/31';
+      if (this.period === 'quarter') return '01/01 - 03/31';
+      return this.selectedYear + '/01/01 - ' + this.selectedYear + '/12/31';
+    },
+    aiSummaryText() {
+      return '刘涛 2026-' + this.selectedWeek + ' 周复盘 本周完成 推进设备巡检模块（智能设备巡检系统）复盘设备异常工单（智能设备巡检系统）更新设备运维手册（智能设备巡检系统）执行概况 本周累计记录 4 条工作动态。重点围绕 智能设备巡检系统 推进。风险与跟进 当前无重大阻塞，按计划推进下周事项。下周重点围绕未闭环事项继续推进，并同步直属负责人 check 结论。';
+    },
+    weekLogs() {
       return [
-        { week: 'W09 (03/02-03/08)', done: 3, undone: 1, rate: 75, score: 7.5 },
-        { week: 'W10 (03/09-03/15)', done: 4, undone: 0, rate: 90, score: 8.2 },
-        { week: 'W11 (03/16-03/22)', done: 3, undone: 1, rate: 75, score: 7.3 },
-        { week: 'W12 (03/23-03/29)', done: 2, undone: 1, rate: 67, score: 7.0 },
+        { date: '2026-03-12', count: 2 },
+        { date: '2026-03-11', count: 1 },
+        { date: '2026-03-10', count: 1 },
       ];
     },
-    quarterMonths() {
+    monthWeekCards() {
       return [
-        { month: '1月', tasks: 16, done: 12, rate: 75, score: 7.2 },
-        { month: '2月', tasks: 14, done: 12, rate: 85, score: 8.0 },
-        { month: '3月', tasks: 15, done: 12, rate: 80, score: 7.8 },
+        { week:'W09', status:'complete', rate:100, tasks:3, logs:4, generated:true },
+        { week:'W10', status:'complete', rate:100, tasks:3, logs:4, generated:true },
+        { week:'W11', status:'complete', rate:100, tasks:3, logs:6, generated:true },
+        { week:'W12', status:'complete', rate:100, tasks:3, logs:0, generated:true },
+        { week:'W13', status:'incomplete', rate:100, tasks:5, logs:0, generated:false },
+        { week:'W14', status:'incomplete', rate:100, tasks:5, logs:0, generated:false },
       ];
     },
-    yearQuarters() {
+    quarterWeekCards() {
       return [
-        { quarter: 'Q1 (1-3月)', tasks: 45, done: 36, rate: 80, score: 7.6 },
-        { quarter: 'Q2 (4-6月)', tasks: 48, done: 37, rate: 77, score: 7.4 },
-        { quarter: 'Q3 (7-9月)', tasks: 52, done: 44, rate: 85, score: 8.0 },
-        { quarter: 'Q4 (10-12月)', tasks: 50, done: 39, rate: 78, score: 7.5 },
+        { week:'W01', status:'empty' }, { week:'W02', status:'empty' }, { week:'W03', status:'empty' }, { week:'W04', status:'empty' },
+        { week:'W05', status:'empty' }, { week:'W06', status:'empty' }, { week:'W07', status:'complete' }, { week:'W08', status:'complete' },
+        { week:'W09', status:'complete' }, { week:'W10', status:'complete' }, { week:'W11', status:'complete' }, { week:'W12', status:'complete' },
+        { week:'W13', status:'incomplete' }, { week:'W14', status:'incomplete' },
+      ];
+    },
+    yearMonthCards() {
+      return [
+        { month:'1月', status:'complete', rate:'85%', done:16 },
+        { month:'2月', status:'complete', rate:'88%', done:14 },
+        { month:'3月', status:'complete', rate:'82%', done:22 },
+        { month:'4月', status:'partial', rate:'78%', done:18 },
+        { month:'5月', status:'partial', rate:'80%', done:20 },
+        { month:'6月', status:'partial', rate:'75%', done:17 },
+        { month:'7月', status:'complete', rate:'90%', done:24 },
+        { month:'8月', status:'complete', rate:'88%', done:22 },
+        { month:'9月', status:'complete', rate:'92%', done:23 },
+        { month:'10月', status:'partial', rate:'82%', done:19 },
+        { month:'11月', status:'partial', rate:'78%', done:18 },
+        { month:'12月', status:'empty', rate:'-', done:0 },
       ];
     }
   },
   methods: {
-    prevMonth() {
-      const [y, m] = this.selectedMonth.split('-').map(Number);
-      const nm = m === 1 ? 12 : m - 1;
-      const ny = m === 1 ? y - 1 : y;
-      this.selectedMonth = ny + '-' + String(nm).padStart(2, '0');
+    prevPeriod() {
+      const weeks = ['W09','W10','W11','W12','W13','W14'];
+      if (this.period === 'week') { const i = weeks.indexOf(this.selectedWeek); if (i > 0) this.selectedWeek = weeks[i-1]; }
+      else if (this.period === 'month') { const m = parseInt(this.selectedMonth); this.selectedMonth = String(m > 1 ? m-1 : 12).padStart(2,'0'); }
+      else if (this.period === 'quarter') { const qs=['Q1','Q2','Q3','Q4']; const i=qs.indexOf(this.selectedQuarter); this.selectedQuarter = qs[i>0?i-1:3]; }
+      else { this.selectedYear = String(Number(this.selectedYear)-1); }
     },
-    nextMonth() {
-      const [y, m] = this.selectedMonth.split('-').map(Number);
-      const nm = m === 12 ? 1 : m + 1;
-      const ny = m === 12 ? y + 1 : y;
-      this.selectedMonth = ny + '-' + String(nm).padStart(2, '0');
-    },
-    prevQuarter() {
-      const qs = ['Q1','Q2','Q3','Q4'];
-      const i = qs.indexOf(this.selectedQuarter);
-      this.selectedQuarter = i === 0 ? 'Q4' : qs[i - 1];
-    },
-    nextQuarter() {
-      const qs = ['Q1','Q2','Q3','Q4'];
-      const i = qs.indexOf(this.selectedQuarter);
-      this.selectedQuarter = i === 3 ? 'Q1' : qs[i + 1];
+    nextPeriod() {
+      const weeks = ['W09','W10','W11','W12','W13','W14'];
+      if (this.period === 'week') { const i = weeks.indexOf(this.selectedWeek); if (i < weeks.length-1) this.selectedWeek = weeks[i+1]; }
+      else if (this.period === 'month') { const m = parseInt(this.selectedMonth); this.selectedMonth = String(m < 12 ? m+1 : 1).padStart(2,'0'); }
+      else if (this.period === 'quarter') { const qs=['Q1','Q2','Q3','Q4']; const i=qs.indexOf(this.selectedQuarter); this.selectedQuarter = qs[i<3?i+1:0]; }
+      else { this.selectedYear = String(Number(this.selectedYear)+1); }
     }
   }
-};
-
+}
 // Notifications Page
 const NotificationsPage = {
   template: `
