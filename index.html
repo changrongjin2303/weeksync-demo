@@ -289,12 +289,14 @@ const store = reactive({
 
   // Mock data
   users: [
-    { id: 1, name: '张伟', role: 'EMPLOYEE', dept: '产品部', managerId: 3, email: 'zhangwei@company.com', phone: '138****1234', isActive: true },
-    { id: 2, name: '李娜', role: 'EMPLOYEE', dept: '技术部', managerId: 3, email: 'lina@company.com', phone: '139****5678', isActive: true },
-    { id: 3, name: '王强', role: 'MANAGER', dept: '产品部', managerId: 5, email: 'wangqiang@company.com', phone: '137****9012', isActive: true },
-    { id: 4, name: '赵敏', role: 'HR', dept: '人力资源部', managerId: 5, email: 'zhaomin@company.com', phone: '136****3456', isActive: true },
-    { id: 5, name: '陈总', role: 'BOSS', dept: '总经办', managerId: null, email: 'chenzong@company.com', phone: '135****7890', isActive: true },
-    { id: 6, name: '刘管理', role: 'ADMIN', dept: '系统管理', managerId: 5, email: 'liuadmin@company.com', phone: '133****2345', isActive: true },
+    { id: 1, name: '张伟', role: 'EMPLOYEE', dept: '产品部', deptId: 1, managerId: 3, email: 'zhangwei@company.com', phone: '138****1234', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_001', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-12 06:00' },
+    { id: 2, name: '李娜', role: 'EMPLOYEE', dept: '技术部', deptId: 2, managerId: 3, email: 'lina@company.com', phone: '139****5678', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_002', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-12 06:00' },
+    { id: 3, name: '王强', role: 'MANAGER', dept: '产品部', deptId: 1, managerId: 5, email: 'wangqiang@company.com', phone: '137****9012', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_003', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-12 06:00' },
+    { id: 4, name: '赵敏', role: 'HR', dept: '人力资源部', deptId: 5, managerId: 5, email: 'zhaomin@company.com', phone: '136****3456', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_004', employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-12 06:00' },
+    { id: 5, name: '陈总', role: 'BOSS', dept: '总经办', deptId: null, managerId: null, email: 'chenzong@company.com', phone: '135****7890', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_005', employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'manual', lastSyncedAt: '2026-03-12 06:00' },
+    { id: 6, name: '刘管理', role: 'ADMIN', dept: '系统管理', deptId: null, managerId: 5, email: 'liuadmin@company.com', phone: '133****2345', isActive: true, identitySource: 'local', dingtalkUserId: null, employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'manual', lastSyncedAt: null },
+    { id: 7, name: '黄小明', role: 'EMPLOYEE', dept: '技术部', deptId: 2, managerId: 3, email: 'huangxm@company.com', phone: '138****5521', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_007', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-11 14:30' },
+    { id: 8, name: '周雪', role: 'EMPLOYEE', dept: '市场部', deptId: 3, managerId: null, email: 'zhouxue@company.com', phone: '139****8832', isActive: true, identitySource: 'dingtalk', dingtalkUserId: 'dt_008', employmentStatus: 'active', reviewerSyncMode: 'auto', seniorReviewerSyncMode: 'auto', lastSyncedAt: '2026-03-10 09:15' },
   ],
   departments: [
     { id: 1, name: '产品部', leader: '王强', members: 8, planRate: 87 },
@@ -465,9 +467,7 @@ const TabBar = {
       const ws = store.workspace;
       if (role === 'ADMIN') {
         return [
-          { path: '/admin/users', icon: '👥', label: '用户' },
-          { path: '/admin/registrations', icon: '📝', label: '注册审批', badge: store.registrations.filter(r=>r.status==='pending').length || null },
-          { path: '/admin/departments', icon: '🏗️', label: '组织架构' },
+          { path: '/admin/personnel', icon: '👥', label: '人员' },
           { path: '/admin/projects', icon: '📁', label: '项目台账' },
           { path: '/notifications', icon: '🔔', label: '通知', badge: 2 },
         ];
@@ -520,7 +520,7 @@ const RoleDrawer = {
       store.currentRole = id;
       store.workspace = 'personal';
       store.showRoleDrawer = false;
-      if (id === 'ADMIN') this.$router.push('/admin/users');
+      if (id === 'ADMIN') this.$router.push('/admin/personnel');
       else if (id === 'BOSS') {
         store.workspace = 'organization';
         this.$router.push('/boss/dashboard');
@@ -2139,362 +2139,365 @@ const BossReports = {
 
 // ===================== ADMIN PAGES =====================
 
-// 1. Users Management
-const AdminUsers = {
-  data() { return { search: '', roleFilter: 'all', editingReviewer: null }; },
+// 1. Personnel Management (用户 + 注册审批 + 组织架构 三合一)
+const AdminPersonnel = {
+  data() { return {
+    tab: 'members',        // members | org | sync
+    search: '', roleFilter: 'all', deptFilter: 'all', statusFilter: 'all',
+    editingUserId: null, editForm: {},
+    syncing: false, lastSync: '2026-03-12 06:00',
+    showSyncLog: false,
+    syncLogs: [
+      { time: '2026-03-12 06:00', status: 'success', added: 2, updated: 5, deactivated: 0, msg: '全量同步完成' },
+      { time: '2026-03-11 06:00', status: 'success', added: 0, updated: 3, deactivated: 1, msg: '全量同步完成，1人已离职停用' },
+      { time: '2026-03-10 14:22', status: 'success', added: 1, updated: 2, deactivated: 0, msg: '增量同步（组织变更事件）' },
+    ],
+  }; },
   template: `
     <div class="page">
-      <div style="margin-bottom:16px;">
-        <div style="font-size:18px;font-weight:800;">👥 用户管理</div>
-        <div style="font-size:12px;color:var(--text-3);margin-top:2px;">管理用户角色、负责人分配与账号状态</div>
-      </div>
 
-      <!-- Search & Filter -->
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <input v-model="search" placeholder="搜索姓名/邮箱/手机..." style="flex:1;" />
-        <select v-model="roleFilter" style="width:110px;font-size:13px;">
-          <option value="all">全部角色</option>
-          <option value="EMPLOYEE">员工</option>
-          <option value="MANAGER">负责人</option>
-          <option value="HR">HR</option>
-          <option value="ADMIN">管理员</option>
-          <option value="BOSS">CEO</option>
-        </select>
-      </div>
-
-      <!-- Stats -->
-      <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;">
-        <div v-for="(count, label) in roleCounts" :key="label" style="flex-shrink:0;padding:6px 12px;background:var(--surface);border-radius:20px;font-size:12px;box-shadow:var(--shadow-sm);">
-          {{ label }} <strong>{{ count }}</strong>
+      <!-- Header + Sync Button -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+        <div>
+          <div style="font-size:18px;font-weight:800;">👥 人员管理</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px;">来自钉钉 · 上次同步 {{ lastSync }}</div>
         </div>
+        <button class="btn btn-sm" :class="syncing ? 'btn-outline' : 'btn-primary'" style="font-size:12px;padding:6px 12px;" @click="triggerSync" :disabled="syncing">
+          {{ syncing ? '同步中...' : '🔄 立即同步' }}
+        </button>
       </div>
 
-      <!-- User Cards -->
-      <div v-for="u in filteredUsers" :key="u.id" class="card" style="padding:12px 14px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white;" :style="{ background: roleColor(u.role) }">{{ u.name[0] }}</div>
-            <div>
-              <div style="font-size:14px;font-weight:600;">{{ u.name }}</div>
-              <div style="font-size:11px;color:var(--text-3);">{{ u.email || u.phone || '—' }} · {{ u.dept }}</div>
+      <!-- Tabs -->
+      <div class="tabs" style="margin-bottom:12px;">
+        <div class="tab" :class="{ active: tab === 'members' }" @click="tab = 'members'">成员列表</div>
+        <div class="tab" :class="{ active: tab === 'org' }" @click="tab = 'org'">组织架构</div>
+        <div class="tab" :class="{ active: tab === 'sync' }" @click="tab = 'sync'">同步记录</div>
+      </div>
+
+      <!-- ============ MEMBERS TAB ============ -->
+      <div v-if="tab === 'members'">
+
+        <!-- Stats Pills -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+          <div style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--surface);box-shadow:var(--shadow-sm);">
+            全部 <strong>{{ store.users.length }}</strong>
+          </div>
+          <div style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--primary-soft);color:var(--primary);">
+            🔵 钉钉 <strong>{{ store.users.filter(u => u.identitySource === 'dingtalk').length }}</strong>
+          </div>
+          <div style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--warning-soft);color:var(--warning);">
+            🟡 本地 <strong>{{ store.users.filter(u => u.identitySource === 'local').length }}</strong>
+          </div>
+          <div style="padding:4px 12px;border-radius:20px;font-size:12px;background:var(--danger-soft);color:var(--danger);">
+            ⛔ 停用 <strong>{{ store.users.filter(u => u.isActive === false).length }}</strong>
+          </div>
+        </div>
+
+        <!-- Search + Filter -->
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+          <input v-model="search" placeholder="搜索姓名/部门..." style="flex:2;min-width:120px;" />
+          <select v-model="roleFilter" style="flex:1;min-width:90px;font-size:12px;">
+            <option value="all">全部角色</option>
+            <option value="EMPLOYEE">员工</option>
+            <option value="MANAGER">负责人</option>
+            <option value="HR">HR</option>
+            <option value="ADMIN">管理员</option>
+            <option value="BOSS">CEO</option>
+          </select>
+          <select v-model="deptFilter" style="flex:1;min-width:90px;font-size:12px;">
+            <option value="all">全部部门</option>
+            <option v-for="d in store.departments" :key="d.id" :value="d.name">{{ d.name }}</option>
+          </select>
+        </div>
+
+        <!-- User Cards -->
+        <div v-for="u in filteredUsers" :key="u.id" class="card" style="padding:12px 14px;">
+
+          <!-- View Mode -->
+          <div v-if="editingUserId !== u.id">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white;flex-shrink:0;" :style="{ background: roleColor(u.role) }">{{ u.name[0] }}</div>
+                <div>
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span style="font-size:14px;font-weight:600;">{{ u.name }}</span>
+                    <span style="font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;" :style="roleTagStyle(u.role)">{{ roleLabel(u.role) }}</span>
+                    <span v-if="u.identitySource === 'dingtalk'" title="来自钉钉同步" style="font-size:10px;padding:1px 6px;border-radius:4px;background:#e8f4ff;color:#1677ff;">🔵 钉钉</span>
+                    <span v-else style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--warning-soft);color:var(--warning);">🟡 本地</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--text-3);margin-top:2px;">{{ u.dept || '—' }} · {{ u.phone || u.email || '—' }}</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                <span style="font-size:10px;padding:2px 8px;border-radius:10px;" :style="{ background: u.isActive !== false ? 'var(--success-soft)' : 'var(--danger-soft)', color: u.isActive !== false ? 'var(--success)' : 'var(--danger)' }">
+                  {{ u.isActive !== false ? '在职' : '已停用' }}
+                </span>
+                <button style="font-size:12px;color:var(--text-3);padding:2px 4px;" @click="startEditUser(u)">✏️</button>
+              </div>
+            </div>
+
+            <!-- Reviewer Chain -->
+            <div style="background:var(--surface-soft);border-radius:8px;padding:10px;font-size:12px;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <!-- User node -->
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                  <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;">{{ u.name[0] }}</div>
+                  <div style="font-size:10px;color:var(--text-2);">{{ u.name }}</div>
+                </div>
+                <!-- Arrow + Reviewer -->
+                <template v-if="getManager(u)">
+                  <span style="color:var(--text-3);font-size:14px;">→</span>
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;">{{ getManager(u).name[0] }}</div>
+                    <div style="font-size:10px;color:var(--text-2);">{{ getManager(u).name }}</div>
+                    <div style="font-size:9px;color:var(--text-3);">审核人</div>
+                  </div>
+                </template>
+                <!-- Arrow + Senior Reviewer -->
+                <template v-if="getSeniorManager(u)">
+                  <span style="color:var(--text-3);font-size:14px;">→</span>
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                    <div style="width:28px;height:28px;border-radius:50%;background:var(--violet);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;">{{ getSeniorManager(u).name[0] }}</div>
+                    <div style="font-size:10px;color:var(--text-2);">{{ getSeniorManager(u).name }}</div>
+                    <div style="font-size:9px;color:var(--text-3);">高级审核人</div>
+                  </div>
+                </template>
+                <div v-if="!getManager(u)" style="color:var(--text-3);font-size:11px;">未设置审核链</div>
+
+                <!-- Sync mode badges -->
+                <div style="margin-left:auto;display:flex;flex-direction:column;gap:3px;align-items:flex-end;">
+                  <span style="font-size:9px;padding:1px 6px;border-radius:4px;" :style="u.reviewerSyncMode === 'auto' ? 'background:#e8f4ff;color:#1677ff' : 'background:var(--warning-soft);color:var(--warning)'">
+                    审核人：{{ u.reviewerSyncMode === 'auto' ? '🔄 自动' : '✋ 手工' }}
+                  </span>
+                  <span style="font-size:9px;padding:1px 6px;border-radius:4px;" :style="u.seniorReviewerSyncMode === 'auto' ? 'background:#e8f4ff;color:#1677ff' : 'background:var(--warning-soft);color:var(--warning)'">
+                    高级：{{ u.seniorReviewerSyncMode === 'auto' ? '🔄 自动' : '✋ 手工' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px;">
+              <button class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 10px;" :class="u.isActive !== false ? '' : 'btn-success'" @click="toggleActive(u)">
+                {{ u.isActive !== false ? '停用账号' : '恢复账号' }}
+              </button>
             </div>
           </div>
-          <span class="badge" :style="{ background: u.isActive !== false ? 'var(--success-soft)' : 'var(--danger-soft)', color: u.isActive !== false ? 'var(--success)' : 'var(--danger)' }">
-            {{ u.isActive !== false ? '正常' : '已停用' }}
-          </span>
-        </div>
 
-        <!-- Role & Reviewer -->
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-          <div style="flex:1;min-width:120px;">
-            <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">角色</div>
-            <select :value="u.role" @change="changeRole(u, $event.target.value)" style="padding:6px 8px;font-size:12px;">
-              <option value="EMPLOYEE">员工</option>
-              <option value="MANAGER">负责人</option>
-              <option value="HR">HR</option>
-              <option value="ADMIN">管理员</option>
-              <option value="BOSS">CEO</option>
-            </select>
+          <!-- Edit Mode -->
+          <div v-else>
+            <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:10px;">编辑人员配置</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">系统角色</div>
+                  <select v-model="editForm.role" style="font-size:12px;">
+                    <option value="EMPLOYEE">员工</option>
+                    <option value="MANAGER">负责人</option>
+                    <option value="HR">HR</option>
+                    <option value="ADMIN">管理员</option>
+                    <option value="BOSS">CEO</option>
+                  </select>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">直属负责人</div>
+                  <select v-model="editForm.managerId" style="font-size:12px;">
+                    <option :value="null">未设置</option>
+                    <option v-for="m in store.users.filter(x => x.id !== editForm.userId)" :key="m.id" :value="m.id">{{ m.name }}（{{ m.dept }}）</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">审核人同步</div>
+                  <select v-model="editForm.reviewerSyncMode" style="font-size:12px;">
+                    <option value="auto">🔄 自动（跟随钉钉层级）</option>
+                    <option value="manual">✋ 手工（锁定不被覆盖）</option>
+                  </select>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">高级审核人同步</div>
+                  <select v-model="editForm.seniorReviewerSyncMode" style="font-size:12px;">
+                    <option value="auto">🔄 自动</option>
+                    <option value="manual">✋ 手工</option>
+                  </select>
+                </div>
+              </div>
+              <div v-if="editForm.reviewerSyncMode === 'manual'" style="font-size:11px;padding:8px;background:var(--warning-soft);border-radius:6px;color:var(--warning);">
+                ⚠️ 手工模式下，钉钉同步不会覆盖该用户的审核链配置
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button class="btn btn-primary btn-sm" style="flex:1;" @click="saveUser(u)">保存</button>
+              <button class="btn btn-outline btn-sm" style="flex:1;" @click="editingUserId = null">取消</button>
+            </div>
           </div>
-          <div style="flex:1;min-width:120px;">
-            <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">直属负责人</div>
-            <select :value="u.managerId || ''" @change="changeReviewer(u, $event.target.value)" style="padding:6px 8px;font-size:12px;">
-              <option value="">未设置</option>
-              <option v-for="m in store.users.filter(x => x.id !== u.id)" :key="m.id" :value="m.id">{{ m.name }}（{{ m.dept }}）</option>
-            </select>
+        </div>
+
+        <div v-if="!filteredUsers.length" class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-text">未找到匹配的成员</div>
+        </div>
+      </div>
+
+      <!-- ============ ORG TREE TAB ============ -->
+      <div v-if="tab === 'org'">
+        <div class="alert alert-info" style="margin-bottom:14px;">
+          🔵 组织架构以钉钉为主数据源，每日凌晨自动同步。如需调整，请在钉钉后台修改。
+        </div>
+
+        <!-- Dept Tree -->
+        <div v-for="d in deptTree" :key="d.id" style="margin-bottom:10px;">
+          <!-- L1 Dept -->
+          <div style="background:var(--surface);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-sm);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">🏢</span>
+                <div>
+                  <div style="font-size:14px;font-weight:600;">{{ d.name }}</div>
+                  <div style="font-size:11px;color:var(--text-3);">负责人：{{ d.leader || '未设置' }} · {{ deptMemberCount(d.id) }} 人</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--primary-soft);color:var(--primary);">L{{ d.level || 1 }}</span>
+                <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--warning-soft);color:var(--warning);">⭐ 高优 {{ d.highPriorityQuota || 3 }}/人</span>
+              </div>
+            </div>
+
+            <!-- Members in dept -->
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              <div v-for="u in deptMembers(d.id)" :key="u.id"
+                style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--surface-soft);border-radius:20px;font-size:12px;">
+                <div style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:700;" :style="{ background: roleColor(u.role) }">{{ u.name[0] }}</div>
+                <span>{{ u.name }}</span>
+                <span style="font-size:10px;padding:0 4px;border-radius:3px;opacity:0.7;" :style="roleTagStyle(u.role)">{{ roleLabel(u.role) }}</span>
+                <span v-if="u.identitySource === 'dingtalk'" style="font-size:9px;color:#1677ff;">🔵</span>
+                <span v-else style="font-size:9px;color:var(--warning);">🟡</span>
+              </div>
+              <div v-if="!deptMembers(d.id).length" style="font-size:12px;color:var(--text-3);padding:4px;">暂无成员</div>
+            </div>
+
+            <!-- High priority quota edit -->
+            <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:12px;">
+              <span style="color:var(--text-3);">高优任务配额（每人每周）</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button style="width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:white;font-size:14px;cursor:pointer;" @click="d.highPriorityQuota = Math.max(1,(d.highPriorityQuota||3)-1)">−</button>
+                <span style="font-weight:700;font-size:14px;">{{ d.highPriorityQuota || 3 }}</span>
+                <button style="width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:white;font-size:14px;cursor:pointer;" @click="d.highPriorityQuota = Math.min(10,(d.highPriorityQuota||3)+1)">+</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Senior Reviewer display -->
-        <div v-if="u.managerId" style="font-size:11px;color:var(--text-3);margin-bottom:8px;">
-          <span>上一级负责人：</span>
-          <span v-if="getSeniorReviewer(u)" style="color:var(--text-2);">{{ getSeniorReviewer(u).name }}</span>
-          <span v-else style="color:var(--warning);">自动链路带出（{{ getReviewerName(u.managerId) }}的负责人）</span>
+        <!-- Unassigned members -->
+        <div v-if="unassignedMembers.length" style="margin-top:4px;">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">未分配部门</div>
+          <div style="background:var(--surface);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-sm);">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              <div v-for="u in unassignedMembers" :key="u.id" style="display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--surface-soft);border-radius:20px;font-size:12px;">
+                <div style="width:20px;height:20px;border-radius:50%;background:#999;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:700;">{{ u.name[0] }}</div>
+                <span>{{ u.name }}</span>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <!-- Actions -->
-        <div style="display:flex;justify-content:flex-end;gap:6px;">
-          <button class="btn btn-sm" :class="u.isActive !== false ? 'btn-outline' : 'btn-success'" style="font-size:11px;padding:4px 10px;" @click="toggleActive(u)">
-            {{ u.isActive !== false ? '停用' : '启用' }}
+      <!-- ============ SYNC LOG TAB ============ -->
+      <div v-if="tab === 'sync'">
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-title"><span class="icon">🔗</span>钉钉同步配置</div>
+          <div style="font-size:13px;line-height:2;color:var(--text-2);">
+            <div>同步方式：<strong>定时全量 + 事件增量</strong></div>
+            <div>全量频率：<strong>每日凌晨 6:00</strong></div>
+            <div>增量触发：<strong>钉钉组织变更事件</strong></div>
+            <div>上次同步：<strong>{{ lastSync }}</strong></div>
+            <div>同步范围：<strong>部门树 · 成员信息 · 直属上级 · 在职状态</strong></div>
+          </div>
+          <button class="btn btn-primary btn-block" style="margin-top:12px;" @click="triggerSync" :disabled="syncing">
+            {{ syncing ? '🔄 同步中...' : '🔄 立即触发全量同步' }}
           </button>
         </div>
+
+        <div class="section-title">📋 同步记录</div>
+        <div v-for="log in syncLogs" :key="log.time" class="card" style="padding:12px 14px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+            <div style="font-size:13px;font-weight:600;">{{ log.time }}</div>
+            <span style="font-size:11px;padding:2px 8px;border-radius:10px;" :style="log.status === 'success' ? 'background:var(--success-soft);color:var(--success)' : 'background:var(--danger-soft);color:var(--danger)'">
+              {{ log.status === 'success' ? '✅ 成功' : '❌ 失败' }}
+            </span>
+          </div>
+          <div style="display:flex;gap:12px;font-size:12px;color:var(--text-3);">
+            <span>➕ 新增 {{ log.added }}</span>
+            <span>🔄 更新 {{ log.updated }}</span>
+            <span>⛔ 停用 {{ log.deactivated }}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-2);margin-top:4px;">{{ log.msg }}</div>
+        </div>
       </div>
 
-      <div v-if="!filteredUsers.length" class="empty-state">
-        <div class="empty-icon">🔍</div>
-        <div class="empty-text">未找到匹配的用户</div>
-      </div>
     </div>
   `,
   computed: {
     filteredUsers() {
       let list = store.users;
       if (this.roleFilter !== 'all') list = list.filter(u => u.role === this.roleFilter);
+      if (this.deptFilter !== 'all') list = list.filter(u => u.dept === this.deptFilter);
       if (this.search) {
         const q = this.search.toLowerCase();
-        list = list.filter(u => u.name.toLowerCase().includes(q) || (u.email && u.email.toLowerCase().includes(q)) || (u.dept && u.dept.toLowerCase().includes(q)));
+        list = list.filter(u => u.name.toLowerCase().includes(q) || (u.dept && u.dept.toLowerCase().includes(q)));
       }
       return list;
     },
-    roleCounts() {
-      const counts = {};
-      store.users.forEach(u => {
-        const label = { EMPLOYEE:'员工', MANAGER:'负责人', HR:'HR', ADMIN:'管理员', BOSS:'CEO' }[u.role] || u.role;
-        counts[label] = (counts[label] || 0) + 1;
-      });
-      return counts;
+    deptTree() {
+      return [...store.departments].sort((a, b) => (a.level || 1) - (b.level || 1));
+    },
+    unassignedMembers() {
+      return store.users.filter(u => !u.deptId && u.isActive !== false);
     }
   },
   methods: {
+    roleLabel(r) { return { EMPLOYEE:'员工', MANAGER:'负责人', HR:'HR', ADMIN:'管理员', BOSS:'CEO' }[r] || r; },
     roleColor(r) { return { EMPLOYEE:'var(--primary)', MANAGER:'var(--success)', HR:'var(--violet)', ADMIN:'var(--danger)', BOSS:'var(--warning)' }[r] || '#999'; },
-    changeRole(u, role) { u.role = role; toast(u.name + ' 角色已更新为 ' + { EMPLOYEE:'员工', MANAGER:'负责人', HR:'HR', ADMIN:'管理员', BOSS:'CEO' }[role]); },
-    changeReviewer(u, val) { u.managerId = val ? parseInt(val) : null; toast('已更新 ' + u.name + ' 的负责人'); },
-    getReviewerName(id) { const u = store.users.find(x => x.id === id); return u ? u.name : '未设置'; },
-    getSeniorReviewer(u) {
-      if (!u.managerId) return null;
-      const mgr = store.users.find(x => x.id === u.managerId);
-      if (mgr && mgr.managerId) return store.users.find(x => x.id === mgr.managerId);
-      return null;
+    roleTagStyle(r) {
+      const m = { EMPLOYEE:'background:var(--primary-soft);color:var(--primary)', MANAGER:'background:var(--success-soft);color:var(--success)', HR:'background:var(--violet-soft);color:var(--violet)', ADMIN:'background:var(--danger-soft);color:var(--danger)', BOSS:'background:var(--warning-soft);color:var(--warning)' };
+      return m[r] || '';
+    },
+    getManager(u) { return u.managerId ? store.users.find(x => x.id === u.managerId) : null; },
+    getSeniorManager(u) {
+      const mgr = this.getManager(u);
+      return mgr ? this.getManager(mgr) : null;
+    },
+    deptMemberCount(deptId) { return store.users.filter(u => u.deptId === deptId).length; },
+    deptMembers(deptId) { return store.users.filter(u => u.deptId === deptId && u.isActive !== false); },
+    startEditUser(u) {
+      this.editingUserId = u.id;
+      this.editForm = { userId: u.id, role: u.role, managerId: u.managerId || null, reviewerSyncMode: u.reviewerSyncMode || 'auto', seniorReviewerSyncMode: u.seniorReviewerSyncMode || 'auto' };
+    },
+    saveUser(u) {
+      u.role = this.editForm.role;
+      u.managerId = this.editForm.managerId;
+      u.reviewerSyncMode = this.editForm.reviewerSyncMode;
+      u.seniorReviewerSyncMode = this.editForm.seniorReviewerSyncMode;
+      this.editingUserId = null;
+      toast('✅ ' + u.name + ' 配置已保存');
+      store.auditLogs.unshift({ id: Date.now(), type: 'user', content: '管理员更新了 ' + u.name + ' 的角色和审核链配置', time: '03-12 ' + new Date().toTimeString().slice(0,5) });
     },
     toggleActive(u) {
       u.isActive = u.isActive === false ? true : false;
-      toast(u.name + (u.isActive ? ' 已启用' : ' 已停用'));
-    }
-  }
-};
-
-// 2. Registration Approvals
-const AdminRegistrations = {
-  data() { return { showRejectModal: false, rejectTarget: null }; },
-  template: `
-    <div class="page">
-      <div style="margin-bottom:16px;">
-        <div style="font-size:18px;font-weight:800;">📝 注册审批</div>
-        <div style="font-size:12px;color:var(--text-3);margin-top:2px;">审批新用户注册申请</div>
-      </div>
-
-      <!-- Pending Count -->
-      <div v-if="pendingList.length" class="alert alert-warning" style="margin-bottom:16px;">
-        📋 当前有 <strong>{{ pendingList.length }}</strong> 条待审批的注册申请
-      </div>
-
-      <!-- Pending Cards -->
-      <div v-for="r in pendingList" :key="r.id" class="card" style="padding:14px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-          <div style="width:42px;height:42px;border-radius:50%;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--primary);">{{ r.name[0] }}</div>
-          <div style="flex:1;">
-            <div style="font-size:15px;font-weight:600;">{{ r.name }}</div>
-            <div style="font-size:12px;color:var(--text-3);">申请加入 · {{ r.dept }}</div>
-          </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:12px;">
-          <div style="padding:8px;background:var(--surface-soft);border-radius:6px;">
-            <div style="color:var(--text-3);">邮箱</div>
-            <div style="font-weight:500;margin-top:2px;">{{ r.email || '未填写' }}</div>
-          </div>
-          <div style="padding:8px;background:var(--surface-soft);border-radius:6px;">
-            <div style="color:var(--text-3);">手机</div>
-            <div style="font-weight:500;margin-top:2px;">{{ r.phone || '未填写' }}</div>
-          </div>
-          <div style="padding:8px;background:var(--surface-soft);border-radius:6px;grid-column:span 2;">
-            <div style="color:var(--text-3);">申请时间</div>
-            <div style="font-weight:500;margin-top:2px;">{{ r.applyTime }}</div>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-success btn-sm" style="flex:1;" @click="approveReg(r)">✅ 通过</button>
-          <button class="btn btn-danger btn-sm" style="flex:1;" @click="showRejectModal = true; rejectTarget = r">❌ 拒绝</button>
-        </div>
-      </div>
-
-      <!-- Empty State -->
-      <div v-if="!pendingList.length" class="empty-state">
-        <div class="empty-icon">✅</div>
-        <div class="empty-text">暂无待审批的注册申请</div>
-        <div style="font-size:12px;color:var(--text-3);margin-top:4px;">所有注册申请已处理完毕</div>
-      </div>
-
-      <!-- Reject Confirm Modal -->
-      <div v-if="showRejectModal" class="modal-overlay" @click.self="showRejectModal = false">
-        <div class="modal-content">
-          <div class="modal-header">
-            <div class="modal-title">确认拒绝注册申请？</div>
-            <button class="modal-close" @click="showRejectModal = false">✕</button>
-          </div>
-          <div style="padding:12px 0;font-size:14px;color:var(--text-2);">
-            将拒绝 <strong>{{ rejectTarget?.name }}</strong> 的注册申请，该用户将无法登录系统。
-          </div>
-          <button class="btn btn-danger btn-block" @click="rejectReg">确认拒绝</button>
-        </div>
-      </div>
-    </div>
-  `,
-  computed: {
-    pendingList() { return store.registrations.filter(r => r.status === 'pending'); }
-  },
-  methods: {
-    approveReg(r) {
-      r.status = 'approved';
-      store.users.push({ id: r.id, name: r.name, email: r.email, phone: r.phone, role: 'EMPLOYEE', dept: r.dept, managerId: null, isActive: true });
-      toast('✅ 已通过 ' + r.name + ' 的注册申请');
+      toast(u.name + (u.isActive ? ' 已恢复' : ' 已停用'));
+      store.auditLogs.unshift({ id: Date.now(), type: 'user', content: '管理员' + (u.isActive ? '恢复' : '停用') + '了账号：' + u.name, time: '03-12 ' + new Date().toTimeString().slice(0,5) });
     },
-    rejectReg() {
-      if (this.rejectTarget) {
-        this.rejectTarget.status = 'rejected';
-        toast('❌ 已拒绝 ' + this.rejectTarget.name + ' 的注册申请');
-      }
-      this.showRejectModal = false;
-      this.rejectTarget = null;
-    }
-  }
-};
-
-// 3. Departments / Organization Structure
-const AdminDepartments = {
-  data() { return { editingId: null, showAdd: false, editForm: {}, addForm: { name: '', code: '', parentId: null, leaderId: null, level: 1, displayOrder: 0, highPriorityQuota: 3 } }; },
-  template: `
-    <div class="page">
-      <div style="margin-bottom:16px;">
-        <div style="font-size:18px;font-weight:800;">🏗️ 组织架构维护</div>
-        <div style="font-size:12px;color:var(--text-3);margin-top:2px;">维护部门层级、负责人、排序和高优先级任务配额</div>
-      </div>
-
-      <button class="btn btn-primary btn-sm" style="margin-bottom:14px;" @click="showAdd = !showAdd">{{ showAdd ? '取消新增' : '+ 新增部门' }}</button>
-
-      <!-- Add Form -->
-      <div v-if="showAdd" class="card" style="border:2px dashed var(--primary);margin-bottom:14px;">
-        <div style="font-size:14px;font-weight:600;margin-bottom:10px;color:var(--primary);">新增部门</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div>
-            <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">部门名称 *</div>
-            <input v-model="addForm.name" placeholder="输入部门名称" />
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div>
-              <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">部门编码</div>
-              <input v-model="addForm.code" placeholder="可选" />
-            </div>
-            <div>
-              <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">层级</div>
-              <select v-model="addForm.level" style="font-size:13px;"><option :value="1">L1</option><option :value="2">L2</option><option :value="3">L3</option><option :value="4">L4</option></select>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div>
-              <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">上级部门</div>
-              <select v-model="addForm.parentId" style="font-size:13px;"><option :value="null">无</option><option v-for="d in store.departments" :key="d.id" :value="d.id">{{ d.name }}</option></select>
-            </div>
-            <div>
-              <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">高优先级配额</div>
-              <input type="number" v-model.number="addForm.highPriorityQuota" min="1" max="10" />
-            </div>
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">部门负责人</div>
-            <select v-model="addForm.leaderId" style="font-size:13px;"><option :value="null">未设置</option><option v-for="u in managerUsers" :key="u.id" :value="u.id">{{ u.name }}（{{ u.dept }}）</option></select>
-          </div>
-          <button class="btn btn-primary btn-block btn-sm" :disabled="!addForm.name" @click="createDept">创建部门</button>
-        </div>
-      </div>
-
-      <!-- Department Cards -->
-      <div v-for="d in sortedDepts" :key="d.id" class="card" style="padding:14px;">
-        <!-- View Mode -->
-        <div v-if="editingId !== d.id">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-            <div>
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:15px;font-weight:600;">{{ d.name }}</span>
-                <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--primary-soft);color:var(--primary);">L{{ d.level || 1 }}</span>
-                <span v-if="d.isActive === false" style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--danger-soft);color:var(--danger);">已停用</span>
-              </div>
-              <div style="font-size:12px;color:var(--text-3);margin-top:2px;">{{ d.code || '无编码' }} · 排序 {{ d.displayOrder || 0 }}</div>
-            </div>
-            <button style="font-size:16px;padding:4px;" @click="startEdit(d)">✏️</button>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
-            <div style="padding:6px 8px;background:var(--surface-soft);border-radius:6px;">
-              <div style="color:var(--text-3);">负责人</div>
-              <div style="font-weight:500;">{{ d.leader || '未设置' }}</div>
-            </div>
-            <div style="padding:6px 8px;background:var(--surface-soft);border-radius:6px;">
-              <div style="color:var(--text-3);">成员数</div>
-              <div style="font-weight:500;">{{ d.members }} 人</div>
-            </div>
-            <div style="padding:6px 8px;background:var(--surface-soft);border-radius:6px;">
-              <div style="color:var(--text-3);">上级部门</div>
-              <div style="font-weight:500;">{{ getParentName(d.parentId) }}</div>
-            </div>
-            <div style="padding:6px 8px;background:var(--surface-soft);border-radius:6px;">
-              <div style="color:var(--text-3);">高优配额</div>
-              <div style="font-weight:500;">{{ d.highPriorityQuota || 3 }} 个/人/周</div>
-            </div>
-          </div>
-
-          <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px;">
-            <button class="btn btn-sm" :class="d.isActive !== false ? 'btn-outline' : 'btn-success'" style="font-size:11px;padding:4px 10px;" @click="toggleDeptActive(d)">
-              {{ d.isActive !== false ? '停用' : '启用' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Edit Mode -->
-        <div v-else>
-          <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:10px;">编辑部门</div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
-              <div><div style="font-size:11px;color:var(--text-3);margin-bottom:2px;">部门名称 *</div><input v-model="editForm.name" /></div>
-              <div><div style="font-size:11px;color:var(--text-3);margin-bottom:2px;">编码</div><input v-model="editForm.code" /></div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-              <div><div style="font-size:11px;color:var(--text-3);margin-bottom:2px;">层级</div><select v-model="editForm.level" style="font-size:12px;"><option :value="1">L1</option><option :value="2">L2</option><option :value="3">L3</option><option :value="4">L4</option></select></div>
-              <div><div style="font-size:11px;color:var(--text-3);margin-bottom:2px;">排序</div><input type="number" v-model.number="editForm.displayOrder" min="0" /></div>
-              <div><div style="font-size:11px;color:var(--text-3);margin-bottom:2px;">高优配额</div><input type="number" v-model.number="editForm.highPriorityQuota" min="1" max="10" /></div>
-            </div>
-            <div><div style="font-size:11px;color:var(--text-3);margin-bottom:2px;">负责人</div><select v-model="editForm.leaderId" style="font-size:12px;"><option :value="null">未设置</option><option v-for="u in managerUsers" :key="u.id" :value="u.id">{{ u.name }}</option></select></div>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="btn btn-primary btn-sm" style="flex:1;" :disabled="!editForm.name" @click="saveDept(d)">保存</button>
-            <button class="btn btn-outline btn-sm" style="flex:1;" @click="editingId = null">取消</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
-  computed: {
-    sortedDepts() { return [...store.departments].sort((a, b) => (a.level || 1) - (b.level || 1) || (a.displayOrder || 0) - (b.displayOrder || 0)); },
-    managerUsers() { return store.users.filter(u => ['MANAGER','ADMIN','BOSS'].includes(u.role) && u.isActive !== false); }
-  },
-  methods: {
-    getParentName(id) { if (!id) return '无'; const d = store.departments.find(x => x.id === id); return d ? d.name : '无'; },
-    startEdit(d) {
-      this.editingId = d.id;
-      this.editForm = { name: d.name, code: d.code || '', level: d.level || 1, displayOrder: d.displayOrder || 0, highPriorityQuota: d.highPriorityQuota || 3, leaderId: d.leaderId || null };
-    },
-    saveDept(d) {
-      Object.assign(d, { name: this.editForm.name, code: this.editForm.code, level: this.editForm.level, displayOrder: this.editForm.displayOrder, highPriorityQuota: this.editForm.highPriorityQuota });
-      if (this.editForm.leaderId) {
-        const u = store.users.find(x => x.id === this.editForm.leaderId);
-        if (u) d.leader = u.name;
-      } else { d.leader = null; }
-      this.editingId = null;
-      toast('✅ ' + d.name + ' 已更新');
-    },
-    createDept() {
-      const f = this.addForm;
-      const newDept = { id: Date.now(), name: f.name, code: f.code, level: f.level, parentId: f.parentId, leader: null, members: 0, planRate: 0, displayOrder: f.displayOrder || 0, highPriorityQuota: f.highPriorityQuota, isActive: true };
-      if (f.leaderId) { const u = store.users.find(x => x.id === f.leaderId); if (u) newDept.leader = u.name; }
-      store.departments.push(newDept);
-      this.addForm = { name: '', code: '', parentId: null, leaderId: null, level: 1, displayOrder: 0, highPriorityQuota: 3 };
-      this.showAdd = false;
-      toast('✅ 部门「' + newDept.name + '」已创建');
-    },
-    toggleDeptActive(d) {
-      d.isActive = d.isActive === false ? true : false;
-      toast(d.name + (d.isActive ? ' 已启用' : ' 已停用'));
+    triggerSync() {
+      this.syncing = true;
+      toast('🔄 正在同步钉钉组织架构...');
+      setTimeout(() => {
+        this.syncing = false;
+        this.lastSync = '2026-03-12 ' + new Date().toTimeString().slice(0,5);
+        this.syncLogs.unshift({ time: this.lastSync, status: 'success', added: 0, updated: 8, deactivated: 0, msg: '手动触发全量同步完成' });
+        toast('✅ 同步完成，已更新 8 条人员记录');
+        store.auditLogs.unshift({ id: Date.now(), type: 'sync', content: '管理员手动触发钉钉全量同步，更新 8 条人员记录', time: '03-12 ' + new Date().toTimeString().slice(0,5) });
+      }, 2000);
     }
   }
 };
@@ -2669,9 +2672,7 @@ const routes = [
   { path: '/boss/dashboard', component: BossDashboard },
   { path: '/boss/plans', component: BossPlans },
   { path: '/boss/reports', component: BossReports },
-  { path: '/admin/users', component: AdminUsers },
-  { path: '/admin/registrations', component: AdminRegistrations },
-  { path: '/admin/departments', component: AdminDepartments },
+  { path: '/admin/personnel', component: AdminPersonnel },
   { path: '/admin/projects', component: AdminProjects },
 ];
 
@@ -2712,9 +2713,7 @@ const App = {
         '/boss/dashboard': '组织仪表盘',
         '/boss/plans': '全员计划',
         '/boss/reports': '组织报告',
-        '/admin/users': '用户管理',
-        '/admin/registrations': '注册审批',
-        '/admin/departments': '组织架构维护',
+        '/admin/personnel': '人员管理',
         '/admin/projects': '项目台账',
       };
       if (this.$route.path.startsWith('/plans/')) return '计划详情';
