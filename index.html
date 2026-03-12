@@ -656,199 +656,267 @@ const DashboardPage = {
     <div class="page">
       <workspace-mode-bar />
 
-      <div style="margin-bottom:20px;">
-        <div style="font-size:22px;font-weight:800;">{{ greeting }}，{{ user.name }}</div>
-        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ roleInfo.name }} · {{ user.dept }} · 2026-W11</div>
+      <!-- Greeting -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;">{{ greeting }}，{{ user.name }}</div>
+        <div style="color:var(--text-3);font-size:13px;margin-top:3px;">{{ roleLabel }} · {{ user.dept }} · 2026-W11</div>
       </div>
 
-      <!-- ========== MANAGER: Todo Queues ========== -->
-      <div v-if="isManager">
-        <div class="section-title">📋 管理者待办</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
-          <div class="card" style="padding:12px;cursor:pointer;margin-bottom:0;" :style="expandedQueue==='approve' ? 'border:2px solid var(--primary)' : ''" @click="expandedQueue = expandedQueue==='approve' ? null : 'approve'">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:var(--warning-soft);display:flex;align-items:center;justify-content:center;font-size:18px;">📋</div>
-              <div><div style="font-size:20px;font-weight:700;color:var(--warning);">1</div><div style="font-size:11px;color:var(--text-3);">待审批</div></div>
+      <!-- ============ 本周主流程 card (Employee & Manager) ============ -->
+      <div v-if="!isBoss && !isHR" style="background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-sm);margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:4px;">本周主流程</div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:4px;">{{ planStatusHeadline }}</div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:16px;">{{ planStatusDesc }}</div>
+
+        <!-- 5-step flow -->
+        <div style="display:flex;align-items:flex-start;margin-bottom:16px;">
+          <div v-for="(step, i) in workflowSteps" :key="i" style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative;">
+            <!-- Connector line -->
+            <div v-if="i < workflowSteps.length - 1" style="position:absolute;top:16px;left:calc(50% + 16px);right:calc(-50% + 16px);height:2px;z-index:0;"
+              :style="{ background: step.done ? 'var(--success)' : 'var(--border)' }"></div>
+            <!-- Circle -->
+            <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;z-index:1;position:relative;"
+              :style="{ background: step.done ? 'var(--success)' : step.active ? 'var(--primary)' : '#e2e8f0', color: step.done || step.active ? 'white' : 'var(--text-3)' }">
+              <span v-if="step.done" style="font-size:14px;">✓</span>
+              <span v-else>{{ i + 1 }}</span>
             </div>
-          </div>
-          <div class="card" style="padding:12px;cursor:pointer;margin-bottom:0;" :style="expandedQueue==='evaluate' ? 'border:2px solid var(--primary)' : ''" @click="expandedQueue = expandedQueue==='evaluate' ? null : 'evaluate'">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:var(--success-soft);display:flex;align-items:center;justify-content:center;font-size:18px;">✅</div>
-              <div><div style="font-size:20px;font-weight:700;color:var(--success);">2</div><div style="font-size:11px;color:var(--text-3);">待评估</div></div>
-            </div>
-          </div>
-          <div class="card" style="padding:12px;cursor:pointer;margin-bottom:0;" :style="expandedQueue==='duedate' ? 'border:2px solid var(--primary)' : ''" @click="expandedQueue = expandedQueue==='duedate' ? null : 'duedate'">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:var(--violet-soft);display:flex;align-items:center;justify-content:center;font-size:18px;">📅</div>
-              <div><div style="font-size:20px;font-weight:700;color:var(--violet);">1</div><div style="font-size:11px;color:var(--text-3);">待改期</div></div>
-            </div>
-          </div>
-          <div class="card" style="padding:12px;cursor:pointer;margin-bottom:0;" :style="expandedQueue==='collab' ? 'border:2px solid var(--primary)' : ''" @click="expandedQueue = expandedQueue==='collab' ? null : 'collab'">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:var(--cyan-soft);display:flex;align-items:center;justify-content:center;font-size:18px;">🤝</div>
-              <div><div style="font-size:20px;font-weight:700;color:var(--cyan);">0</div><div style="font-size:11px;color:var(--text-3);">待协办</div></div>
-            </div>
+            <div style="font-size:10px;font-weight:500;margin-top:5px;text-align:center;"
+              :style="{ color: step.done ? 'var(--success)' : step.active ? 'var(--primary)' : 'var(--text-3)' }">{{ step.label }}</div>
           </div>
         </div>
 
-        <!-- Expanded Queue Details -->
-        <div v-if="expandedQueue === 'approve'" class="card" style="animation:scaleIn 0.2s ease;">
-          <div class="card-title"><span class="icon">📋</span>待审批计划</div>
-          <div class="list-item" style="box-shadow:none;border:1px solid var(--border);" @click="$router.push('/plans/3')">
-            <div class="list-item-header">
-              <div class="list-item-title">李娜</div>
-              <span class="badge badge-submitted">待审核</span>
-            </div>
-            <div class="list-item-meta"><span>📅 2026-W11</span><span>📝 3个任务</span><span>🕐 09:30提交</span></div>
+        <!-- Stats Row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+          <div style="padding:10px 8px;background:var(--success-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--success);margin-bottom:2px;">完成率</div>
+            <div style="font-size:18px;font-weight:800;color:var(--success);">{{ empCompletionRate }}%</div>
+          </div>
+          <div style="padding:10px 8px;background:var(--warning-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--warning);margin-bottom:2px;">工作动态</div>
+            <div style="font-size:18px;font-weight:800;color:var(--warning);">{{ workLogCount }} 条</div>
+          </div>
+          <div style="padding:10px 8px;background:var(--surface-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:2px;">未读消息</div>
+            <div style="font-size:18px;font-weight:800;color:var(--text-2);">{{ unreadCount }} 条</div>
           </div>
         </div>
-        <div v-if="expandedQueue === 'evaluate'" class="card" style="animation:scaleIn 0.2s ease;">
-          <div class="card-title"><span class="icon">✅</span>待评估任务</div>
-          <div class="task-item" v-for="t in [{title:'产品原型设计',user:'张伟',week:'W10',project:'WeekSync v2.0'},{title:'新功能调研',user:'张伟',week:'W10',project:'WeekSync v2.0'}]" :key="t.title">
-            <div class="task-check done" style="background:var(--warning);border-color:var(--warning);">!</div>
-            <div class="task-body">
-              <div class="task-name">{{ t.title }}</div>
-              <div class="task-info">
-                <span style="font-size:11px;color:var(--text-3);">👤 {{ t.user }}</span>
-                <span style="font-size:11px;color:var(--text-3);">📅 {{ t.week }}</span>
-                <span style="font-size:11px;color:var(--text-3);">📁 {{ t.project }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-if="expandedQueue === 'duedate'" class="card" style="animation:scaleIn 0.2s ease;">
-          <div class="card-title"><span class="icon">📅</span>改期申请</div>
-          <div style="padding:10px;background:var(--surface-soft);border-radius:8px;border:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-              <div>
-                <div style="font-size:14px;font-weight:600;">竞品分析报告</div>
-                <div style="font-size:12px;color:var(--text-3);margin-top:2px;">👤 张伟 · 原截止 03-12 → 申请延至 03-14</div>
-                <div style="font-size:12px;color:var(--text-2);margin-top:4px;">📝 原因：需要补充两个竞品的深度分析</div>
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;margin-top:8px;">
-              <button class="btn btn-success btn-sm" style="font-size:11px;padding:4px 12px;" @click="toast('✅ 已批准改期')">批准</button>
-              <button class="btn btn-outline btn-sm" style="font-size:11px;padding:4px 12px;" @click="toast('❌ 已驳回改期')">驳回</button>
-            </div>
-          </div>
-        </div>
-        <div v-if="expandedQueue === 'collab'" class="card" style="animation:scaleIn 0.2s ease;">
-          <div class="card-title"><span class="icon">🤝</span>协办任务</div>
-          <div class="empty-state" style="padding:16px;"><div class="empty-text">暂无待处理协办</div></div>
+
+        <!-- CTA Buttons -->
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="flex:1;font-size:14px;font-weight:600;padding:12px;border-radius:12px;" @click="$router.push('/plans')">
+            📋 查看本周计划
+          </button>
+          <button class="btn btn-outline" style="width:48px;border-radius:12px;font-size:18px;" @click="toast('已收藏')">☆</button>
         </div>
       </div>
 
-      <!-- ========== EMPLOYEE: Content ========== -->
-      <div v-if="isEmployee">
-        <div v-if="currentPlan && currentPlan.status === 'draft'" class="alert alert-info">
-          📝 本周计划尚未提交，请尽快完成并提交审核
+      <!-- ============ 管理者待办 (Manager/Boss/HR) ============ -->
+      <div v-if="isManager || isBoss || isHR" style="background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-sm);margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+          <span style="font-size:16px;">👥</span>
+          <span style="font-size:15px;font-weight:700;">管理者待办</span>
         </div>
-        <div v-if="currentPlan && currentPlan.status === 'returned'" class="alert alert-danger">
-          ↩️ 本周计划已被退回，请修改后重新提交
-        </div>
-        <div v-if="currentPlan && currentPlan.status === 'approved'" class="alert alert-success">
-          ✅ 本周计划已通过审批，请按时执行任务
-        </div>
-
-        <!-- Stats -->
-        <div class="stat-grid">
-          <div class="stat-card blue"><div class="stat-label">本周任务</div><div class="stat-value blue">{{ empTasks.length }}</div></div>
-          <div class="stat-card green"><div class="stat-label">已完成</div><div class="stat-value green">{{ empTasks.filter(t=>t.status==='done').length }}</div></div>
-          <div class="stat-card orange"><div class="stat-label">进行中</div><div class="stat-value orange">{{ empTasks.filter(t=>t.status==='progress').length }}</div></div>
-          <div class="stat-card violet"><div class="stat-label">完成率</div><div class="stat-value violet">{{ empCompletionRate }}%</div></div>
-        </div>
-
-        <!-- Workflow Progress (same as manager) -->
-        <div class="card">
-          <div class="card-title"><span class="icon">🔄</span>我的本周流程</div>
-          <div style="display:flex;align-items:center;gap:0;margin:8px 0;">
-            <div v-for="(step, i) in workflowSteps" :key="i" style="flex:1;text-align:center;position:relative;">
-              <div style="width:28px;height:28px;border-radius:50%;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;transition:all 0.3s;" :style="{ background: step.done ? 'var(--success)' : step.active ? 'var(--primary)' : '#e2e8f0', color: step.done || step.active ? 'white' : 'var(--text-3)' }">
-                <span v-if="step.done">✓</span><span v-else>{{ i+1 }}</span>
-              </div>
-              <div style="font-size:10px;font-weight:500;" :style="{ color: step.done ? 'var(--success)' : step.active ? 'var(--primary)' : 'var(--text-3)' }">{{ step.label }}</div>
-              <div v-if="i < workflowSteps.length - 1" style="position:absolute;top:14px;left:calc(50% + 14px);right:calc(-50% + 14px);height:2px;" :style="{ background: step.done ? 'var(--success)' : '#e2e8f0' }"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div v-for="q in todoQueues" :key="q.key"
+            :style="expandedQueue === q.key ? 'border:1.5px solid var(--primary)' : 'border:1px solid var(--border)'"
+            style="background:white;border-radius:12px;padding:12px;cursor:pointer;"
+            @click="expandedQueue = expandedQueue === q.key ? null : q.key">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+              <span style="font-size:13px;font-weight:600;color:var(--text);">{{ q.label }}</span>
+              <span style="font-size:16px;">›</span>
             </div>
+            <div style="font-size:22px;font-weight:800;" :style="{ color: q.count > 0 ? q.color : 'var(--text)' }">{{ q.count }}</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px;">{{ q.count > 0 ? q.detail : '当前无待' + q.label + '事项' }}</div>
+          </div>
+        </div>
+
+        <!-- Expanded Detail -->
+        <div v-if="expandedQueue === 'approve'" style="background:var(--surface-soft);border-radius:10px;padding:12px;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;">📋 待审批计划</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:white;border-radius:8px;cursor:pointer;" @click="$router.push('/plans/3')">
+            <div>
+              <div style="font-size:13px;font-weight:600;">李娜 · 2026-W11</div>
+              <div style="font-size:11px;color:var(--text-3);">3个任务 · 09:30提交</div>
+            </div>
+            <span class="badge badge-submitted">待审核</span>
+          </div>
+        </div>
+        <div v-if="expandedQueue === 'evaluate'" style="background:var(--surface-soft);border-radius:10px;padding:12px;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;">✅ 待评估任务</div>
+          <div v-for="t in [{title:'产品原型设计',user:'张伟'},{title:'新功能调研',user:'张伟'}]" :key="t.title"
+            style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:white;border-radius:8px;margin-bottom:6px;">
+            <div>
+              <div style="font-size:13px;font-weight:600;">{{ t.title }}</div>
+              <div style="font-size:11px;color:var(--text-3);">👤 {{ t.user }} · W10</div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;" @click="toast('前往评估')">评估</button>
+          </div>
+        </div>
+        <div v-if="expandedQueue === 'duedate'" style="background:var(--surface-soft);border-radius:10px;padding:12px;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;">📅 改期申请</div>
+          <div style="padding:8px;background:white;border-radius:8px;">
+            <div style="font-size:13px;font-weight:600;">竞品分析报告</div>
+            <div style="font-size:11px;color:var(--text-3);margin:4px 0;">张伟 · 03-12 → 03-14 · 需要补充竞品深度分析</div>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+              <button class="btn btn-success btn-sm" style="font-size:11px;padding:4px 10px;" @click="toast('✅ 已批准改期')">批准</button>
+              <button class="btn btn-outline btn-sm" style="font-size:11px;padding:4px 10px;" @click="toast('已驳回')">驳回</button>
+            </div>
+          </div>
+        </div>
+        <div v-if="expandedQueue === 'collab'" style="background:var(--surface-soft);border-radius:10px;padding:12px;text-align:center;">
+          <div style="color:var(--text-3);font-size:12px;">暂无待处理协办</div>
+        </div>
+
+        <div v-if="!expandedQueue" style="background:var(--surface-soft);border-radius:8px;padding:10px;text-align:center;font-size:12px;color:var(--text-3);">
+          点击上方卡片查看具体任务项
+        </div>
+      </div>
+
+      <!-- ============ 我的本周流程 (Manager only - below TODO) ============ -->
+      <div v-if="isManager" style="background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-sm);margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+          <span style="font-size:16px;">🔄</span>
+          <span style="font-size:15px;font-weight:700;">我的本周流程</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;">
+          <div v-for="(step, i) in workflowSteps" :key="i" style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative;">
+            <div v-if="i < workflowSteps.length - 1" style="position:absolute;top:16px;left:calc(50% + 16px);right:calc(-50% + 16px);height:2px;z-index:0;"
+              :style="{ background: step.done ? 'var(--success)' : 'var(--border)' }"></div>
+            <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;z-index:1;position:relative;"
+              :style="{ background: step.done ? 'var(--success)' : step.active ? 'var(--primary)' : '#e2e8f0', color: step.done || step.active ? 'white' : 'var(--text-3)' }">
+              <span v-if="step.done" style="font-size:14px;">✓</span>
+              <span v-else>{{ i + 1 }}</span>
+            </div>
+            <div style="font-size:10px;font-weight:500;margin-top:5px;text-align:center;"
+              :style="{ color: step.done ? 'var(--success)' : step.active ? 'var(--primary)' : 'var(--text-3)' }">{{ step.label }}</div>
           </div>
         </div>
       </div>
 
-      <!-- ========== MANAGER: Workflow Progress ========== -->
-      <div v-if="isManager" class="card">
-        <div class="card-title"><span class="icon">🔄</span>我的本周流程</div>
-        <div style="display:flex;align-items:center;gap:0;margin:8px 0;">
-          <div v-for="(step, i) in workflowSteps" :key="i" style="flex:1;text-align:center;position:relative;">
-            <div style="width:28px;height:28px;border-radius:50%;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;transition:all 0.3s;" :style="{ background: step.done ? 'var(--success)' : step.active ? 'var(--primary)' : '#e2e8f0', color: step.done || step.active ? 'white' : 'var(--text-3)' }">
-              <span v-if="step.done">✓</span><span v-else>{{ i+1 }}</span>
-            </div>
-            <div style="font-size:10px;font-weight:500;" :style="{ color: step.done ? 'var(--success)' : step.active ? 'var(--primary)' : 'var(--text-3)' }">{{ step.label }}</div>
-            <div v-if="i < workflowSteps.length - 1" style="position:absolute;top:14px;left:calc(50% + 14px);right:calc(-50% + 14px);height:2px;" :style="{ background: step.done ? 'var(--success)' : '#e2e8f0' }"></div>
-          </div>
+      <!-- ============ 快捷操作 ============ -->
+      <div style="background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-sm);margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+          <span style="font-size:16px;">⚡</span>
+          <span style="font-size:15px;font-weight:700;">快捷操作</span>
+        </div>
+        <div class="quick-grid">
+          <button class="quick-btn" @click="$router.push('/plans')"><span class="qicon">📝</span><span class="qlabel">我的计划</span></button>
+          <button class="quick-btn" @click="$router.push('/execution')"><span class="qicon">🎯</span><span class="qlabel">今日执行</span></button>
+          <button v-if="isManager" class="quick-btn" @click="$router.push('/plans'); $nextTick(()=>{ store._teamView=true })"><span class="qicon">👥</span><span class="qlabel">团队计划</span></button>
+          <button class="quick-btn" @click="$router.push('/review')"><span class="qicon">📊</span><span class="qlabel">周复盘</span></button>
+          <button class="quick-btn" @click="$router.push('/notifications')"><span class="qicon">🔔</span><span class="qlabel">消息</span></button>
+          <button v-if="isBoss || isHR" class="quick-btn" @click="switchOrg"><span class="qicon">🏢</span><span class="qlabel">组织视角</span></button>
+          <button class="quick-btn" @click="toast('AI报告生成中...')"><span class="qicon">🤖</span><span class="qlabel">AI周报</span></button>
         </div>
       </div>
 
-      <!-- ========== Quick Actions ========== -->
-      <div class="section-title">⚡ 快捷操作</div>
-      <div class="quick-grid">
-        <button class="quick-btn" @click="$router.push('/plans')"><span class="qicon">📝</span><span class="qlabel">我的计划</span></button>
-        <button class="quick-btn" @click="$router.push('/execution')"><span class="qicon">🎯</span><span class="qlabel">今日执行</span></button>
-        <button v-if="isManager" class="quick-btn" @click="$router.push('/team')"><span class="qicon">👥</span><span class="qlabel">团队计划</span></button>
-        <button class="quick-btn" @click="$router.push('/review')"><span class="qicon">📊</span><span class="qlabel">周复盘</span></button>
-        <button class="quick-btn" @click="$router.push('/notifications')"><span class="qicon">🔔</span><span class="qlabel">消息</span></button>
-        <button v-if="store.currentRole==='BOSS'||store.currentRole==='HR'" class="quick-btn" @click="switchOrg"><span class="qicon">🏢</span><span class="qlabel">组织视角</span></button>
-        <button class="quick-btn" @click="toast('AI报告生成中...')"><span class="qicon">🤖</span><span class="qlabel">AI周报</span></button>
-      </div>
-
-      <!-- ========== MANAGER: Team Overview ========== -->
-      <div v-if="isManager" class="card">
-        <div class="card-title"><span class="icon">👥</span>团队概览 · 2026-W11</div>
-        <div style="display:flex;gap:12px;margin-bottom:10px;">
-          <div style="flex:1;text-align:center;padding:8px;background:var(--success-soft);border-radius:8px;">
-            <div style="font-size:20px;font-weight:700;color:var(--success);">3</div>
+      <!-- ============ 团队概览 (Manager) ============ -->
+      <div v-if="isManager" style="background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-sm);margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:16px;">👥</span>
+            <span style="font-size:15px;font-weight:700;">团队概览 · 2026-W11</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div style="padding:12px 8px;background:var(--success-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:var(--success);">3</div>
             <div style="font-size:11px;color:var(--success);">已提交</div>
           </div>
-          <div style="flex:1;text-align:center;padding:8px;background:var(--warning-soft);border-radius:8px;">
-            <div style="font-size:20px;font-weight:700;color:var(--warning);">1</div>
+          <div style="padding:12px 8px;background:var(--warning-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:var(--warning);">1</div>
             <div style="font-size:11px;color:var(--warning);">未提交</div>
           </div>
-          <div style="flex:1;text-align:center;padding:8px;background:var(--primary-soft);border-radius:8px;">
-            <div style="font-size:20px;font-weight:700;color:var(--primary);">78%</div>
+          <div style="padding:12px 8px;background:var(--primary-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:var(--primary);">78%</div>
             <div style="font-size:11px;color:var(--primary);">任务完成</div>
           </div>
         </div>
-        <button class="btn btn-outline btn-block btn-sm" @click="$router.push('/team')">查看团队详情 →</button>
+        <button style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;background:white;cursor:pointer;color:var(--text);" @click="$router.push('/plans')">
+          查看团队详情 →
+        </button>
       </div>
 
-      <!-- ========== MANAGER: 12-Week History ========== -->
-      <div v-if="isManager" class="card">
-        <div class="card-title"><span class="icon">📈</span>近12周概览</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
-          <div style="text-align:center;padding:6px;background:var(--surface-soft);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--success);">82%</div><div style="font-size:10px;color:var(--text-3);">完成率</div></div>
-          <div style="text-align:center;padding:6px;background:var(--surface-soft);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--primary);">36</div><div style="font-size:10px;color:var(--text-3);">完成任务</div></div>
-          <div style="text-align:center;padding:6px;background:var(--surface-soft);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--warning);">3</div><div style="font-size:10px;color:var(--text-3);">获权延期</div></div>
-          <div style="text-align:center;padding:6px;background:var(--surface-soft);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--danger);">2</div><div style="font-size:10px;color:var(--text-3);">未完成</div></div>
+      <!-- ============ 历史沉淀 (Employee) ============ -->
+      <div v-if="!isManager && !isBoss" style="background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-sm);margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:15px;font-weight:700;">历史沉淀</span>
+          <span style="font-size:12px;color:var(--primary);cursor:pointer;" @click="$router.push('/review')">查看全部</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">按最近 12 周汇总展示闭环与执行概况。</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:8px;">
+          <div style="padding:10px 6px;background:var(--success-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--success);margin-bottom:2px;">完成率</div>
+            <div style="font-size:18px;font-weight:800;color:var(--success);">97%</div>
+          </div>
+          <div style="padding:10px 6px;background:var(--primary-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--primary);margin-bottom:2px;">已完成</div>
+            <div style="font-size:18px;font-weight:800;color:var(--primary);">35</div>
+          </div>
+          <div style="padding:10px 6px;background:var(--warning-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--warning);margin-bottom:2px;">获权延期</div>
+            <div style="font-size:18px;font-weight:800;color:var(--warning);">2</div>
+          </div>
+          <div style="padding:10px 6px;background:var(--danger-soft);border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--danger);margin-bottom:2px;">未完成</div>
+            <div style="font-size:18px;font-weight:800;color:var(--danger);">5</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;">
+          <div style="padding:8px 6px;background:var(--surface-soft);border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:var(--text-3);margin-bottom:2px;">涉及项目</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text);">2</div>
+          </div>
+          <div style="padding:8px 6px;background:var(--surface-soft);border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:var(--text-3);margin-bottom:2px;">涉及部门</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text);">5</div>
+          </div>
+          <div style="padding:8px 6px;background:var(--surface-soft);border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:var(--text-3);margin-bottom:2px;">协作项目</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text);">0</div>
+          </div>
+          <div style="padding:8px 6px;background:var(--surface-soft);border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:var(--text-3);margin-bottom:2px;">动态</div>
+            <div style="font-size:16px;font-weight:700;color:var(--text);">22</div>
+          </div>
         </div>
       </div>
 
-      <!-- ========== EMPLOYEE: 12-Week History ========== -->
-      <div v-if="isEmployee" class="card">
-        <div class="card-title"><span class="icon">📈</span>近12周概览</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
-          <div style="text-align:center;padding:6px;background:var(--surface-soft);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--success);">78%</div><div style="font-size:10px;color:var(--text-3);">完成率</div></div>
-          <div style="text-align:center;padding:6px;background:var(--surface-soft);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--primary);">28</div><div style="font-size:10px;color:var(--text-3);">完成任务</div></div>
-          <div style="text-align:center;padding:6px;background:var(--surface-soft);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--warning);">2</div><div style="font-size:10px;color:var(--text-3);">获权延期</div></div>
-          <div style="text-align:center;padding:6px;background:var(--surface-soft);border-radius:6px;"><div style="font-size:16px;font-weight:700;color:var(--danger);">3</div><div style="font-size:10px;color:var(--text-3);">未完成</div></div>
+      <!-- ============ 近12周概览 (Manager) ============ -->
+      <div v-if="isManager" style="background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow-sm);margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+          <span style="font-size:16px;">📈</span>
+          <span style="font-size:15px;font-weight:700;">近12周概览</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">
+          <div style="text-align:center;">
+            <div style="font-size:18px;font-weight:800;color:var(--success);">82%</div>
+            <div style="font-size:10px;color:var(--text-3);margin-top:2px;">完成率</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:18px;font-weight:800;color:var(--primary);">36</div>
+            <div style="font-size:10px;color:var(--text-3);margin-top:2px;">完成任务</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:18px;font-weight:800;color:var(--warning);">3</div>
+            <div style="font-size:10px;color:var(--text-3);margin-top:2px;">获权延期</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:18px;font-weight:800;color:var(--danger);">2</div>
+            <div style="font-size:10px;color:var(--text-3);margin-top:2px;">未完成</div>
+          </div>
         </div>
       </div>
+
     </div>
   `,
   computed: {
     user() { return currentUser(); },
     roleInfo() { return roles.find(r => r.id === store.currentRole) || roles[0]; },
     isManager() { return store.currentRole === 'MANAGER'; },
-    isEmployee() { return !this.isManager; },
-    empTasks() { return this.currentPlan ? this.currentPlan.tasks : []; },
-    empCompletionRate() { return this.empTasks.length ? Math.round(this.empTasks.filter(t=>t.status==='done').length / this.empTasks.length * 100) : 0; },
+    isBoss() { return store.currentRole === 'BOSS'; },
+    isHR() { return store.currentRole === 'HR'; },
+    roleLabel() { return { EMPLOYEE:'员工', MANAGER:'主管', HR:'HR', ADMIN:'管理员', BOSS:'CEO' }[store.currentRole] || ''; },
     greeting() {
       const h = new Date().getHours();
       if (h < 12) return '上午好';
@@ -856,23 +924,55 @@ const DashboardPage = {
       return '晚上好';
     },
     currentPlan() { return store.plans.find(p => p.userId === this.user.id && p.weekCode === '2026-W11'); },
-    planStep() {
-      if (!this.currentPlan) return 0;
+    empTasks() { return this.currentPlan ? this.currentPlan.tasks : []; },
+    empCompletionRate() {
+      const tasks = this.empTasks;
+      if (!tasks.length) return 0;
+      return Math.round(tasks.filter(t => t.status === 'done').length / tasks.length * 100);
+    },
+    workLogCount() {
+      return store.workLogs.filter(l => l.userId === this.user.id).length;
+    },
+    unreadCount() {
+      return store.notifications.filter(n => n.unread).length;
+    },
+    planStatusHeadline() {
+      if (!this.currentPlan) return '本周尚未创建计划';
       const s = this.currentPlan.status;
-      if (s === 'draft') return 1;
-      if (s === 'submitted' || s === 'approved') return 2;
-      if (s === 'reviewed') return 4;
-      return 1;
+      if (s === 'draft') return '本周计划草稿待提交';
+      if (s === 'submitted') return '计划已提交，等待审批';
+      if (s === 'returned') return '计划已被退回，请修改';
+      if (s === 'approved') return '计划已审批，正在执行中';
+      if (s === 'reviewed') return '本周闭环已进入复盘阶段';
+      return '本周计划进行中';
+    },
+    planStatusDesc() {
+      if (!this.currentPlan) return '前往计划页创建本周计划，开始 PDCA 闭环。';
+      const s = this.currentPlan.status;
+      if (s === 'draft') return '请完善任务并提交，等待主管审批。';
+      if (s === 'submitted') return '计划已提交，请等待主管审批通过。';
+      if (s === 'returned') return '请查看退回意见并修改后重新提交。';
+      if (s === 'approved') return '专注任务执行，完成后可申请主管评估。';
+      if (s === 'reviewed') return '本周计划已完成评估，可以查看复盘内容和历史沉淀。';
+      return '';
     },
     workflowSteps() {
       const p = this.currentPlan;
       const step = p ? { draft:1, submitted:2, returned:1, approved:3, reviewed:5 }[p.status] || 1 : 0;
       return [
-        { label: '计划', done: step >= 1, active: step === 1 },
-        { label: '审批', done: step >= 3, active: step === 2 },
-        { label: '执行', done: step >= 4, active: step === 3 },
-        { label: '评估', done: step >= 5, active: step === 4 },
+        { label: '计划', done: step > 1, active: step === 1 },
+        { label: step >= 3 ? '已审批' : '审批', done: step > 2, active: step === 2 },
+        { label: '执行', done: step > 3, active: step === 3 },
+        { label: step >= 5 ? '已评估' : '评估', done: step > 4, active: step === 4 },
         { label: '复盘', done: step >= 5, active: false },
+      ];
+    },
+    todoQueues() {
+      return [
+        { key: 'approve', label: '待审批', count: 1, color: 'var(--warning)', detail: '1条计划待审批' },
+        { key: 'evaluate', label: '待评估', count: 2, color: 'var(--success)', detail: '2项任务待评估' },
+        { key: 'duedate', label: '待改期', count: 1, color: 'var(--violet)', detail: '1条改期待审批' },
+        { key: 'collab', label: '待协办', count: 0, color: 'var(--cyan)', detail: '' },
       ];
     }
   },
