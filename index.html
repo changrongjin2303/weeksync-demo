@@ -1281,81 +1281,88 @@ const PlanDetailPage = {
         ✅ 该计划已进入执行阶段，您可以对已完成的任务进行评估打分
       </div>
 
-      <!-- Task List -->
-      <div class="section-title">📋 任务列表（{{ plan.tasks.length }}）</div>
-      <div v-for="t in plan.tasks" :key="t.id" class="task-item" style="position:relative;" :style="plan.status === 'reviewed' ? { borderLeft: '3px solid ' + (t.priority === 'high' ? 'var(--primary)' : t.priority === 'medium' ? 'var(--warning)' : 'var(--text-3)'), paddingLeft: '14px', borderRadius: '0 8px 8px 0' } : {}">
-        <!-- Edit Mode -->
-        <div v-if="editingTaskId === t.id" style="width:100%;">
-          <div style="font-size:12px;font-weight:600;color:var(--primary);margin-bottom:8px;">编辑任务</div>
-          <input v-model="editTitle" placeholder="任务标题" style="margin-bottom:6px;font-size:13px;" />
-          <div style="display:flex;gap:6px;margin-bottom:6px;">
-            <select v-model="editPriority" style="flex:1;font-size:12px;padding:6px;">
-              <option value="high">高优先级</option><option value="medium">中优先级</option><option value="low">低优先级</option>
-            </select>
-            <input v-model="editDue" placeholder="截止日期" style="flex:1;font-size:12px;padding:6px;" />
-          </div>
-          <div style="display:flex;gap:6px;">
-            <button class="btn btn-primary btn-sm" style="font-size:11px;" @click="saveEditTask(t)">保存</button>
-            <button class="btn btn-outline btn-sm" style="font-size:11px;" @click="editingTaskId = null">取消</button>
-          </div>
-        </div>
-        <!-- View Mode -->
-        <template v-else>
-          <div class="task-check" :class="t.status === 'done' ? 'done' : t.status === 'progress' ? 'progress' : ''" @click="cycleStatus(t)">
-            <span v-if="t.status === 'done'" style="font-size:14px;">✓</span>
-            <span v-else-if="t.status === 'progress'" style="font-size:10px;">▶</span>
-          </div>
-          <div class="task-body">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-              <div class="task-name" :style="t.status === 'done' ? 'text-decoration:line-through;color:var(--text-3)' : ''">{{ t.title }}</div>
-              <button v-if="canEditTask" style="font-size:12px;color:var(--text-3);padding:2px 4px;" @click="startEditTask(t)">✏️</button>
-            </div>
-            <div class="task-info">
-              <span class="badge" :class="'badge-' + t.priority" style="font-size:10px;padding:1px 6px;">{{ priorityLabel(t.priority) }}</span>
-              <span v-if="t.project" style="font-size:11px;color:var(--text-3);">📁 {{ t.project }}</span>
-              <span style="font-size:11px;color:var(--text-3);">📅 {{ t.dueDate }}</span>
-              <span v-if="t.source !== 'original'" style="font-size:10px;padding:1px 6px;background:var(--violet-soft);color:var(--violet);border-radius:4px;">{{ sourceLabel(t.source) }}</span>
-            </div>
-            <div v-if="t.deliverable" style="font-size:12px;color:var(--text-2);margin-top:4px;">📎 交付物: {{ t.deliverable }}</div>
-
-            <!-- Review result display -->
-            <div v-if="t.reviewResult" style="margin-top:6px;display:flex;align-items:center;gap:8px;">
-              <span class="badge" :class="t.reviewResult === 'completed' ? 'badge-approved' : t.reviewResult === 'authorized_delay' ? 'badge-submitted' : 'badge-returned'" style="font-size:11px;">
-                {{ t.reviewResult === 'completed' ? '✅ 已完成' : t.reviewResult === 'authorized_delay' ? '⏰ 获权延期' : '⚠️ 未完成' }}
-              </span>
-              <span v-if="t.score" class="stars">
-                <span v-for="s in 5" :key="s" class="star" :class="{ filled: s <= Math.round(t.score/2) }">★</span>
-              </span>
-              <span v-if="t.score" style="font-size:12px;font-weight:600;color:var(--warning);">{{ t.score }}/10</span>
-            </div>
-
-            <!-- Manager: Evaluate button for done tasks without result -->
-            <div v-if="canEvaluate && t.status === 'done' && !t.reviewResult" style="margin-top:8px;">
-              <button class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 12px;" @click="openEval(t)">📝 评估此任务</button>
-              <button class="btn btn-outline btn-sm" style="font-size:11px;padding:4px 12px;margin-left:4px;" @click="rejectCompletion(t)">↩️ 驳回完成</button>
-            </div>
-          </div>
-        </template>
+      <!-- Task List Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:600;">任务列表 <span style="color:var(--text-3);font-weight:400;">共 {{ plan.tasks.length }} 项，已完成 {{ doneCount }} 项</span></div>
       </div>
 
-      <!-- Add Task (Employee or Manager) -->
-      <div v-if="canAddTask" style="margin-top:8px;">
-        <div v-if="showAddTask" class="card" style="border:2px dashed var(--primary);">
-          <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:8px;">{{ isManagerViewing ? '主管添加任务' : '新增任务' }}</div>
-          <input v-model="newTaskTitle" placeholder="任务标题 *" style="margin-bottom:6px;" />
-          <div style="display:flex;gap:6px;margin-bottom:6px;">
-            <select v-model="newTaskPriority" style="flex:1;font-size:12px;padding:8px;">
-              <option value="high">高优先级</option><option value="medium">中优先级</option><option value="low">低优先级</option>
-            </select>
-            <input v-model="newTaskDue" placeholder="截止日期" style="flex:1;font-size:12px;" />
+      <!-- All tasks done banner -->
+      <div v-if="allTasksDone && plan.tasks.length > 0" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:12px;text-align:center;font-size:13px;color:var(--primary);">
+        本周任务已全部完成，请前往复盘
+      </div>
+
+      <!-- Task Cards (expandable) -->
+      <div v-for="(t, idx) in plan.tasks" :key="t.id"
+        style="background:white;border-radius:12px;margin-bottom:10px;overflow:hidden;border:1px solid #e8eaf0;"
+        :style="{ borderLeft: '4px solid ' + (t.priority === 'high' ? 'var(--primary)' : t.priority === 'medium' ? 'var(--warning)' : '#a0aec0') }">
+        <!-- Card header (clickable to expand) -->
+        <div @click="expandedTaskId = expandedTaskId === t.id ? null : t.id" style="padding:12px 12px 10px;cursor:pointer;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+            <span style="font-size:13px;font-weight:600;">{{ t.title }}</span>
+            <span class="stars" style="font-size:12px;margin-left:2px;">
+              <span v-for="s in priorityStars(t.priority)" :key="'f'+s" class="star filled">★</span>
+              <span v-for="s in (5 - priorityStars(t.priority))" :key="'e'+s" class="star">★</span>
+            </span>
+            <span class="badge" :class="'badge-' + t.priority" style="font-size:11px;">{{ priorityLabel(t.priority) }}</span>
+            <span v-if="t.status === 'done'" style="background:#dcfce7;color:#16a34a;font-size:11px;padding:2px 8px;border-radius:6px;">已完成</span>
+            <span v-else-if="t.status === 'progress'" style="background:#dbeafe;color:#2563eb;font-size:11px;padding:2px 8px;border-radius:6px;">进行中</span>
+            <span v-else style="background:#f3f4f6;color:#6b7280;font-size:11px;padding:2px 8px;border-radius:6px;">待开始</span>
+            <span v-if="t.reviewResult === 'completed'" style="background:#dcfce7;color:#16a34a;font-size:11px;padding:2px 8px;border-radius:6px;">已完成</span>
+            <span v-if="t.reviewResult === 'incomplete'" style="background:#fee2e2;color:#dc2626;font-size:11px;padding:2px 8px;border-radius:6px;">未完成</span>
+            <span v-if="t.reviewResult === 'authorized_delay'" style="background:#fef3c7;color:#d97706;font-size:11px;padding:2px 8px;border-radius:6px;">获权延期</span>
+            <span style="margin-left:auto;color:var(--text-3);font-size:13px;">{{ expandedTaskId === t.id ? '▲' : '▽' }}</span>
           </div>
-          <input v-model="newTaskProject" placeholder="关联项目（可选）" style="margin-bottom:8px;font-size:12px;" />
-          <div class="btn-group">
-            <button class="btn btn-primary btn-sm" :disabled="!newTaskTitle" @click="addTask">添加</button>
-            <button class="btn btn-outline btn-sm" @click="showAddTask = false">取消</button>
+          <div style="font-size:12px;color:var(--text-3);">
+            所属项目：{{ t.project || '未关联' }}&nbsp;&nbsp;截止日期：{{ t.dueDate }}
           </div>
+          <div v-if="expandedTaskId !== t.id" style="font-size:12px;color:var(--text-3);margin-top:4px;">点击卡片查看详细信息</div>
         </div>
-        <button v-else class="btn btn-outline btn-block" @click="showAddTask = true">+ {{ isManagerViewing ? '添加任务（主管）' : '添加任务' }}</button>
+
+        <!-- Expanded content -->
+        <div v-if="expandedTaskId === t.id" style="padding:0 12px 14px;border-top:1px solid #f0f0f0;">
+          <!-- Reviewer info row -->
+          <div style="font-size:12px;color:var(--text-2);margin:8px 0 10px;display:flex;flex-wrap:wrap;gap:12px;">
+            <span>直属负责人：吴文建</span>
+            <span>上一级负责人：董事长/CEO</span>
+            <span v-if="t.deliverable">交付：{{ t.deliverable }}</span>
+          </div>
+          <!-- Description box -->
+          <div style="background:#f8f9fa;border-radius:8px;padding:10px;margin-bottom:10px;">
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">任务描述</div>
+            <div style="font-size:12px;color:var(--text-2);white-space:pre-wrap;">{{ t.description || '（未填写）' }}</div>
+          </div>
+          <!-- Source tag -->
+          <div v-if="t.source !== 'original'" style="margin-bottom:8px;">
+            <span v-if="t.source === 'midweek'" style="background:#cffafe;color:#0e7490;font-size:11px;padding:2px 8px;border-radius:6px;">周中插入</span>
+            <span v-if="t.source === 'manager'" style="background:#ffedd5;color:#c2410c;font-size:11px;padding:2px 8px;border-radius:6px;">负责人添加</span>
+          </div>
+          <!-- Edit history (mock) -->
+          <div style="font-size:12px;color:var(--text-2);margin-bottom:6px;">🕐 修改历史（1）</div>
+          <div style="background:#f8f9fa;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">
+            <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:8px;">
+              <span>截止日期</span><span style="color:var(--text-3);">共 1 次修改</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;color:var(--text-3);">
+              <span style="background:#e5e7eb;border-radius:6px;padding:3px 8px;">{{ t.dueDate }}</span>
+              <span style="font-size:10px;">吴文建 · 直属负责人</span>
+            </div>
+          </div>
+          <!-- Manager evaluate buttons -->
+          <div v-if="canEvaluate && t.status === 'done' && !t.reviewResult" style="display:flex;gap:6px;margin-bottom:8px;">
+            <button class="btn btn-primary btn-sm" style="font-size:11px;" @click.stop="openEval(t)">📝 评估此任务</button>
+            <button class="btn btn-outline btn-sm" style="font-size:11px;" @click.stop="rejectCompletion(t)">↩️ 驳回完成</button>
+          </div>
+          <!-- Add progress log -->
+          <button style="color:var(--primary);font-size:13px;background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:4px;" @click.stop>
+            + 添加进展记录
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Buttons: Add Task + AI Import -->
+      <div v-if="canAddTask" style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-outline" style="flex:1;border-radius:12px;font-size:14px;padding:12px;" @click="showAddTaskModal = true">+ 添加任务</button>
+        <button class="btn btn-outline" style="flex:1;border-radius:12px;font-size:14px;padding:12px;color:var(--primary);border-color:var(--primary);" @click="toast('AI 文字录入功能开发中')">🤖 AI 文字录入</button>
       </div>
 
       <!-- Action Buttons -->
@@ -1369,6 +1376,81 @@ const PlanDetailPage = {
         </div>
         <div v-if="canEvaluate && allEvaluated" class="btn-group">
           <button class="btn btn-success btn-block" @click="completePlanReview">📊 完成复盘评价</button>
+        </div>
+      </div>
+
+      <!-- Add Task Modal (bottom sheet) -->
+      <div v-if="showAddTaskModal" class="modal-overlay" @click.self="showAddTaskModal = false" style="align-items:flex-end;">
+        <div style="background:white;border-radius:20px 20px 0 0;width:100%;max-height:88vh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom);">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 16px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:white;z-index:1;">
+            <span style="font-size:16px;font-weight:700;">添加任务</span>
+            <button style="background:none;border:none;color:var(--text-3);font-size:15px;cursor:pointer;padding:4px 8px;" @click="showAddTaskModal = false">取消</button>
+          </div>
+          <div style="padding:14px 16px;">
+            <!-- Task type -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:8px;">任务类型 <span style="color:var(--danger);">*</span></div>
+              <div style="display:flex;gap:8px;">
+                <button :style="newTaskType === 'midweek' ? 'background:var(--primary);color:white;' : 'background:#f3f4f6;color:var(--text-2);'" style="flex:1;padding:10px 8px;border:none;border-radius:8px;font-size:13px;cursor:pointer;" @click="newTaskType = 'midweek'">本周周中插入</button>
+                <button :style="newTaskType === 'next' ? 'background:var(--primary);color:white;' : 'background:#f3f4f6;color:var(--text-2);'" style="flex:1;padding:10px 8px;border:none;border-radius:8px;font-size:13px;cursor:pointer;" @click="newTaskType = 'next'">下周计划任务</button>
+              </div>
+            </div>
+            <!-- Title -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px;">标题 <span style="color:var(--danger);">*</span></div>
+              <input v-model="newTaskTitle" placeholder="输入任务标题" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;box-sizing:border-box;" />
+            </div>
+            <!-- Project -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px;">所属项目</div>
+              <select v-model="newTaskProject" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:white;box-sizing:border-box;">
+                <option value="">不选择项目</option>
+                <option v-for="p in store.projects.filter(p=>p.status==='approved')" :key="p.id" :value="p.name">{{ p.name }}</option>
+              </select>
+            </div>
+            <!-- Reviewer -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px;">直属负责人 <span style="color:var(--danger);">*</span></div>
+              <select v-model="newTaskReviewer" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:white;box-sizing:border-box;">
+                <option value="吴文建">吴文建（技术事业部）</option>
+                <option value="张曼丽">张曼丽（行政人事中心）</option>
+                <option value="吴传庆">吴传庆（财务中心）</option>
+              </select>
+            </div>
+            <!-- Senior reviewer (auto) -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px;">上一级负责人（自动带出）</div>
+              <input readonly value="董事长/CEO（董事长/CEO）" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;color:var(--text-3);background:var(--bg);box-sizing:border-box;" />
+              <div style="font-size:11px;color:var(--text-3);margin-top:4px;">上一级负责人会随直属负责人自动更新</div>
+            </div>
+            <!-- Priority -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px;">优先级 <span style="color:var(--danger);">*</span></div>
+              <div style="display:flex;gap:8px;">
+                <button :style="newTaskPriority === 'high' ? 'background:#ef4444;color:white;' : 'background:#f3f4f6;color:var(--text-2);'" style="flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;cursor:pointer;" @click="newTaskPriority = 'high'">高</button>
+                <button :style="newTaskPriority === 'medium' ? 'background:#f97316;color:white;' : 'background:#f3f4f6;color:var(--text-2);'" style="flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;cursor:pointer;" @click="newTaskPriority = 'medium'">中</button>
+                <button :style="newTaskPriority === 'low' ? 'background:#22c55e;color:white;' : 'background:#f3f4f6;color:var(--text-2);'" style="flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;cursor:pointer;" @click="newTaskPriority = 'low'">低</button>
+              </div>
+              <div v-if="highPriorityCount >= 3 && newTaskPriority === 'high'" style="font-size:12px;color:var(--text-3);margin-top:4px;">已有{{ highPriorityCount }}个高优先级任务，选择"高"将需要替换现有高优先级任务</div>
+            </div>
+            <!-- Due date -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px;">截止日期 <span style="color:var(--danger);">*</span></div>
+              <input type="date" v-model="newTaskDue" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;box-sizing:border-box;" />
+            </div>
+            <!-- Description -->
+            <div style="margin-bottom:14px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px;">描述 <span style="color:var(--danger);">*</span></div>
+              <textarea v-model="newTaskDesc" placeholder="任务详细描述（必填）" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;resize:none;box-sizing:border-box;"></textarea>
+            </div>
+            <!-- Deliverable -->
+            <div style="margin-bottom:20px;">
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px;">交付物 <span style="color:var(--danger);">*</span></div>
+              <input v-model="newTaskDeliverable" placeholder="交付物描述（必填）" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;box-sizing:border-box;" />
+            </div>
+            <!-- Save -->
+            <button class="btn btn-primary btn-block" style="min-height:44px;border-radius:12px;" :disabled="!newTaskTitle || !newTaskDue || !newTaskDesc || !newTaskDeliverable" @click="addTaskFromModal">保存</button>
+          </div>
         </div>
       </div>
 
@@ -1415,7 +1497,7 @@ const PlanDetailPage = {
       </div>
     </div>
   `,
-  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalComment: '', comment: '', showAddTask: false, newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '03-14', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
+  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalComment: '', comment: '', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '吴文建', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
   computed: {
     plan() { return store.plans.find(p => p.id === parseInt(this.$route.params.id)); },
     isManagerViewing() { return store.currentRole === 'MANAGER' || store.currentRole === 'BOSS'; },
@@ -1452,10 +1534,32 @@ const PlanDetailPage = {
       if (!this.plan) return false;
       const doneTasks = this.plan.tasks.filter(t => t.status === 'done');
       return doneTasks.length > 0 && doneTasks.every(t => t.reviewResult);
+    },
+    allTasksDone() {
+      if (!this.plan || !this.plan.tasks.length) return false;
+      return this.plan.tasks.every(t => t.status === 'done');
+    },
+    highPriorityCount() {
+      if (!this.plan) return 0;
+      return this.plan.tasks.filter(t => t.priority === 'high').length;
     }
   },
   methods: {
     statusLabel, priorityLabel, sourceLabel, taskStatusLabel,
+    priorityStars(priority) { return priority === 'high' ? 5 : priority === 'medium' ? 4 : 3; },
+    addTaskFromModal() {
+      if (!this.newTaskTitle.trim() || !this.newTaskDue || !this.newTaskDesc || !this.newTaskDeliverable) return;
+      this.plan.tasks.push({
+        id: Date.now(), title: this.newTaskTitle, project: this.newTaskProject || null, priority: this.newTaskPriority,
+        status: 'todo', source: this.newTaskType === 'midweek' ? 'midweek' : 'original',
+        dueDate: this.newTaskDue.replace('2026-', ''), description: this.newTaskDesc,
+        deliverable: this.newTaskDeliverable, reviewResult: null, score: null
+      });
+      this.newTaskTitle = ''; this.newTaskProject = ''; this.newTaskPriority = 'medium';
+      this.newTaskDue = '2026-03-15'; this.newTaskDesc = ''; this.newTaskDeliverable = '';
+      this.showAddTaskModal = false;
+      toast('✅ 任务已添加');
+    },
     cycleStatus(t) {
       if (this.isManagerViewing && !this.isOwnPlan) return;
       if (t.status === 'todo') t.status = 'progress';
