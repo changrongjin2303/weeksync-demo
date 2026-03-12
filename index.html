@@ -392,10 +392,15 @@ const store = reactive({
     { id: 3, userId: 2, date: '2026-03-11', content: '完成用户模块的CRUD API开发，已提交PR等待review。修复了2个前端bug。', project: 'WeekSync v2.0', taskId: 301 },
   ],
   notifications: [
-    { id: 1, type: 'plan_submitted', title: '李娜提交了周计划', desc: '2026-W11周计划等待您的审核', time: '09:30', unread: true, icon: '📋', iconBg: 'var(--primary-soft)' },
-    { id: 2, type: 'task_update', title: '任务状态更新', desc: '「API接口开发」已标记为进行中', time: '10:15', unread: true, icon: '🔄', iconBg: 'var(--warning-soft)' },
-    { id: 3, type: 'plan_approved', title: '您的周计划已通过', desc: '王强已审批通过您的2026-W11周计划', time: '昨天', unread: false, icon: '✅', iconBg: 'var(--success-soft)' },
-    { id: 4, type: 'review_complete', title: '复盘评价完成', desc: '2026-W10周计划已完成评价', time: '3月8日', unread: false, icon: '⭐', iconBg: 'var(--violet-soft)' },
+    { id: 1,  forRole: 'MANAGER',  type: 'plan_submitted', title: '张伟提交了周计划', desc: '2026-W11周计划等待审核，共3个任务，请及时处理', time: '09:30', unread: true, icon: '📋', iconBg: 'var(--primary-soft)', link: '/plans/1' },
+    { id: 2,  forRole: 'MANAGER',  type: 'plan_submitted', title: '李娜提交了周计划', desc: '2026-W11周计划等待审核，共3个任务，请及时处理', time: '09:32', unread: true, icon: '📋', iconBg: 'var(--primary-soft)', link: '/plans/3' },
+    { id: 3,  forRole: 'MANAGER',  type: 'eval_remind',   title: '任务待结果评估', desc: '李娜「修复登录页面bug」已标记完成，请及时评估', time: '11:00', unread: true, icon: '⭐', iconBg: 'var(--violet-soft)', link: '/plans/3' },
+    { id: 4,  forRole: 'EMPLOYEE', type: 'plan_approved',  title: '您的周计划已审批通过', desc: '吴文建已审批通过您的2026-W10周计划，可开始执行', time: '昨天', unread: false, icon: '✅', iconBg: 'var(--success-soft)', link: '/plans/2' },
+    { id: 5,  forRole: 'EMPLOYEE', type: 'eval_done',      title: '任务评估完成', desc: '「产品原型设计」已完成评估，得分9分，结果：已完成', time: '3月8日', unread: false, icon: '⭐', iconBg: 'var(--violet-soft)', link: '/plans/2' },
+    { id: 6,  forRole: 'HR',       type: 'compliance',    title: '本周计划提交率提醒', desc: '当前覆盖率72%，物流中心等部门未提交，请及时跟进', time: '09:00', unread: true, icon: '📊', iconBg: 'var(--violet-soft)', link: '/hr/dashboard' },
+    { id: 7,  forRole: 'HR',       type: 'plan_view',     title: '本周全员计划汇总就绪', desc: '2026-W11周计划提交已截止，点击查看全员提交情况', time: '08:30', unread: false, icon: '📋', iconBg: 'var(--primary-soft)', link: '/boss/plans' },
+    { id: 8,  forRole: 'BOSS',     type: 'org_report',    title: '本周组织报告已生成', desc: '2026-W11全员执行数据已汇总，点击查看分析看板', time: '09:00', unread: true, icon: '📈', iconBg: 'var(--warning-soft)', link: '/boss/dashboard' },
+    { id: 9,  forRole: 'BOSS',     type: 'low_rate',      title: '部门提交率预警', desc: '物流中心本周提交率78%，低于公司标准90%，请关注', time: '昨天', unread: false, icon: '⚠️', iconBg: '#fff8e6', link: '/boss/reports' },
   ],
   registrations: [
     { id: 101, name: '黄小明', email: 'huangxm@company.com', phone: '138****5521', dept: '技术部', applyTime: '2026-03-11 14:30', status: 'pending' },
@@ -1007,7 +1012,7 @@ const MyPlansPage = {
       <!-- Header with view toggle -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div style="font-size:20px;font-weight:700;">{{ view === 'my' ? (isManager ? '我的计划' : '计划') : '团队计划' }}</div>
-        <button v-if="isManager" class="btn btn-sm btn-outline" @click="view = view === 'my' ? 'team' : 'my'" style="font-size:13px;padding:5px 14px;border-radius:20px;">
+        <button v-if="isManager || isHR" class="btn btn-sm btn-outline" @click="view = view === 'my' ? 'team' : 'my'" style="font-size:13px;padding:5px 14px;border-radius:20px;">
           {{ view === 'my' ? '👥 团队计划' : '📝 我的计划' }}
         </button>
       </div>
@@ -1169,6 +1174,7 @@ const MyPlansPage = {
   `,
   computed: {
     isManager() { return store.currentRole === 'MANAGER' || store.currentRole === 'BOSS'; },
+    isHR() { return store.currentRole === 'HR'; },
     deptName() {
       const u = currentUser();
       const d = store.departments.find(d => d.id === u.deptId);
@@ -1286,6 +1292,30 @@ const PlanDetailPage = {
           </div>
           <div class="progress-bar"><div class="progress-fill" :style="{ width: completionRate + '%', background: 'var(--success)' }"></div></div>
         </div>
+      </div>
+
+      <!-- Return reason banner -->
+      <div v-if="plan.status === 'returned' && plan.returnComment" style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:700;color:#dc2626;margin-bottom:6px;">↩️ 退回原因</div>
+        <div style="font-size:13px;color:#b91c1c;line-height:1.6;">{{ plan.returnComment }}</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:6px;">请修改后重新提交</div>
+      </div>
+
+      <!-- HR collab acceptance banner -->
+      <div v-if="isHRViewing && pendingCollabTask" style="background:#f0f9ff;border:1.5px solid #7dd3fc;border-radius:14px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:700;color:#0369a1;margin-bottom:10px;">✈ 待接收协办任务</div>
+        <div style="background:white;border-radius:10px;padding:12px;margin-bottom:12px;">
+          <div style="font-size:14px;font-weight:600;">{{ pendingCollabTask.title }}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:3px;">{{ pendingCollabTask.project || '未关联项目' }} · 截止 {{ pendingCollabTask.dueDate }}</div>
+          <div v-if="pendingCollabTask.collabNote" style="font-size:12px;color:var(--text-2);margin-top:8px;padding:8px;background:#f8f9fa;border-radius:8px;line-height:1.5;">协办说明：{{ pendingCollabTask.collabNote }}</div>
+        </div>
+        <button class="btn btn-primary btn-block" style="border-radius:12px;" @click="acceptCollab(pendingCollabTask)">接收协办并填写回执</button>
+      </div>
+
+      <!-- Collab accepted banner -->
+      <div v-if="isHRViewing && completedCollabTask" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:700;color:#16a34a;margin-bottom:4px;">✅ 协办回执已提交</div>
+        <div style="font-size:13px;color:var(--text-2);">{{ completedCollabTask.collabReceipt }}</div>
       </div>
 
       <!-- 审批意见 card (shown to manager/reviewer when plan is approved) -->
@@ -1533,6 +1563,19 @@ const PlanDetailPage = {
         </div>
       </div>
 
+      <!-- Collab Receipt Modal (HR submits receipt) -->
+      <div v-if="showCollabReceiptModal" class="modal-overlay" @click.self="showCollabReceiptModal = false">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="modal-title">提交协办回执</div>
+            <button class="modal-close" @click="showCollabReceiptModal = false">✕</button>
+          </div>
+          <div style="font-size:13px;color:var(--text-3);margin-bottom:10px;">请填写协办工作完成情况，发起方将收到通知</div>
+          <textarea v-model="collabReceiptNote" rows="4" style="margin-bottom:12px;"></textarea>
+          <button class="btn btn-primary btn-block" @click="submitCollabReceipt">提交回执</button>
+        </div>
+      </div>
+
       <!-- Return Modal -->
       <div v-if="showReturnModal" class="modal-overlay" @click.self="showReturnModal = false">
         <div class="modal-content">
@@ -1576,7 +1619,7 @@ const PlanDetailPage = {
       </div>
     </div>
   `,
-  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalComment: '', comment: '', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, expandedAuxId: null, showCollabModal: false, collabTask: null, collabDept: '', collabNote: '', newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '吴文建', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
+  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalComment: '本周任务完成质量较好，按时交付，后续继续保持。', comment: '任务描述过于笼统，请具体说明各任务的可交付物，并补充完成标准', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, expandedAuxId: null, showCollabModal: false, collabTask: null, collabDept: 4, collabNote: '需要行政人事中心配合，协助联系外部访谈对象并提供客户联系名单，预计需要2个工作日完成对接工作', showCollabReceiptModal: false, collabReceiptNote: '行政人事中心将全力配合，已安排专员联系相关客户，预计3月15日前完成名单对接并提供详细清单。', newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '吴文建', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
   computed: {
     plan() { return store.plans.find(p => p.id === parseInt(this.$route.params.id)); },
     isManagerViewing() { return store.currentRole === 'MANAGER' || store.currentRole === 'BOSS'; },
@@ -1631,6 +1674,15 @@ const PlanDetailPage = {
       return this.plan.tasks.filter(t => t.status === 'done' && !t.reviewResult).length;
     },
     l1Depts() { return store.departments.filter(d => !d.parentId); },
+    isHRViewing() { return store.currentRole === 'HR'; },
+    pendingCollabTask() {
+      if (!this.plan) return null;
+      return this.plan.tasks.find(t => t.collabStatus === 'pending_hr') || null;
+    },
+    completedCollabTask() {
+      if (!this.plan) return null;
+      return this.plan.tasks.find(t => t.collabStatus === 'receipt_submitted') || null;
+    },
     collabDeptManager() {
       if (!this.collabDept) return '';
       const dept = store.departments.find(d => d.id === this.collabDept);
@@ -1650,15 +1702,17 @@ const PlanDetailPage = {
     },
     submitCollab() {
       if (this.collabTask) {
-        this.collabTask.collabStatus = 'pending';
-        const deptName = this.collabDeptManager || '协办部门';
-        toast('✈ 协办已发起，等待 ' + deptName + ' 接收');
-        store.notifications.unshift({ id: Date.now(), icon: '✈', iconBg: '#f0f9ff', title: '协办申请', desc: '发起协办: ' + this.collabTask.title + ' → ' + deptName, time: '刚刚', unread: true });
+        this.collabTask.collabStatus = 'pending_hr';
+        this.collabTask.collabNote = this.collabNote;
+        const deptName = this.collabDeptManager || '行政人事中心';
+        toast('✈ 协办已发起，已通知 ' + deptName + ' 接收');
+        store.notifications.unshift({ id: Date.now(), forRole: 'HR', type: 'collab_request', title: '收到协办申请', desc: currentUser().name + '发起协办：「' + this.collabTask.title + '」，请查看并接收', time: '刚刚', unread: true, icon: '✈', iconBg: '#f0f9ff', link: '/plans/' + this.plan.id });
+        store.notifications.unshift({ id: Date.now()+1, forRole: 'MANAGER', type: 'collab_sent', title: '协办申请已发出', desc: '已向' + deptName + '发起协办：「' + this.collabTask.title + '」，等待对方接收', time: '刚刚', unread: true, icon: '✈', iconBg: '#f0f9ff', link: '/plans/' + this.plan.id });
         this.expandedAuxId = null;
       }
       this.showCollabModal = false;
-      this.collabNote = '';
-      this.collabDept = '';
+      this.collabNote = '需要行政人事中心配合，协助联系外部访谈对象并提供客户联系名单，预计需要2个工作日完成对接工作';
+      this.collabDept = 4;
     },
     addTaskFromModal() {
       if (!this.newTaskTitle.trim() || !this.newTaskDue || !this.newTaskDesc || !this.newTaskDeliverable) return;
@@ -1707,14 +1761,16 @@ const PlanDetailPage = {
       this.evalTask = t;
       this.evalResult = 'completed';
       this.evalScore = 8;
-      this.evalComment = '';
+      this.evalComment = '本周任务完成质量较好，按时交付，后续继续保持。';
       this.showEvalModal = true;
     },
     submitEval() {
       if (this.evalTask) {
         this.evalTask.reviewResult = this.evalResult;
         this.evalTask.score = this.evalScore;
+        const resultLabel = { completed:'已完成', incomplete:'未完成', authorized_delay:'获权延期' }[this.evalResult] || this.evalResult;
         toast('✅ 已评估：' + this.evalTask.title);
+        store.notifications.unshift({ id: Date.now(), forRole: 'EMPLOYEE', type: 'eval_done', title: '任务评估完成', desc: '「' + this.evalTask.title + '」已完成评估，得分' + this.evalScore + '分，结果：' + resultLabel, time: '刚刚', unread: true, icon: '⭐', iconBg: 'var(--violet-soft)', link: '/plans/' + this.plan.id });
       }
       this.showEvalModal = false;
     },
@@ -1725,25 +1781,42 @@ const PlanDetailPage = {
     submitPlan() {
       this.plan.status = 'submitted';
       this.plan.submittedAt = '03-12 ' + new Date().toTimeString().slice(0,5);
-      toast('✅ 计划已提交审核');
+      toast('✅ 计划已提交审核，等待主管审批');
       store.auditLogs.unshift({ id: Date.now(), type: 'submit', content: this.plan.userName + ' 提交了 ' + this.plan.weekCode + ' 周计划', time: '03-12 ' + new Date().toTimeString().slice(0,5) });
+      store.notifications.unshift({ id: Date.now()+1, forRole: 'MANAGER', type: 'plan_submitted', title: this.plan.userName + '提交了周计划', desc: this.plan.weekCode + '周计划等待审核，共' + this.plan.tasks.length + '个任务，请及时处理', time: '刚刚', unread: true, icon: '📋', iconBg: 'var(--primary-soft)', link: '/plans/' + this.plan.id });
     },
     approvePlan() {
       this.plan.status = 'approved';
       this.plan.approvedBy = currentUser().name;
       toast('✅ 计划已审批通过');
       store.auditLogs.unshift({ id: Date.now(), type: 'approve', content: currentUser().name + ' 审批通过了 ' + this.plan.userName + ' 的周计划', time: '03-12 ' + new Date().toTimeString().slice(0,5) });
+      store.notifications.unshift({ id: Date.now()+1, forRole: 'EMPLOYEE', type: 'plan_approved', title: '周计划审批通过', desc: currentUser().name + '已审批通过您的' + this.plan.weekCode + '周计划，可以开始执行', time: '刚刚', unread: true, icon: '✅', iconBg: 'var(--success-soft)', link: '/plans/' + this.plan.id });
     },
     returnPlan() {
       this.plan.status = 'returned';
+      this.plan.returnComment = this.comment;
       this.showReturnModal = false;
-      toast('↩️ 计划已退回');
-      store.auditLogs.unshift({ id: Date.now(), type: 'return', content: currentUser().name + ' 退回了 ' + this.plan.userName + ' 的周计划', time: '03-12 ' + new Date().toTimeString().slice(0,5) });
+      toast('↩️ 计划已退回，已通知员工修改');
+      store.auditLogs.unshift({ id: Date.now(), type: 'return', content: currentUser().name + ' 退回了 ' + this.plan.userName + ' 的周计划，原因：' + this.comment, time: '03-12 ' + new Date().toTimeString().slice(0,5) });
+      store.notifications.unshift({ id: Date.now()+1, forRole: 'EMPLOYEE', type: 'plan_returned', title: '周计划已被退回修改', desc: currentUser().name + '退回了您的' + this.plan.weekCode + '周计划：' + this.comment, time: '刚刚', unread: true, icon: '↩️', iconBg: '#fef2f2', link: '/plans/' + this.plan.id });
     },
     completePlanReview() {
       this.plan.status = 'reviewed';
       toast('📊 复盘评价已完成');
       store.auditLogs.unshift({ id: Date.now(), type: 'review', content: currentUser().name + ' 完成了 ' + this.plan.userName + ' ' + this.plan.weekCode + ' 的复盘评价', time: '03-12 ' + new Date().toTimeString().slice(0,5) });
+    },
+    acceptCollab(t) {
+      this.showCollabReceiptModal = true;
+    },
+    submitCollabReceipt() {
+      const t = this.pendingCollabTask;
+      if (t) {
+        t.collabStatus = 'receipt_submitted';
+        t.collabReceipt = this.collabReceiptNote;
+      }
+      store.notifications.unshift({ id: Date.now(), forRole: 'MANAGER', type: 'collab_receipt', title: '协办回执已提交', desc: '行政人事中心已完成协办工作，请查看回执内容', time: '刚刚', unread: true, icon: '✅', iconBg: 'var(--success-soft)', link: this.$route.fullPath });
+      this.showCollabReceiptModal = false;
+      toast('✅ 协办回执已提交，已通知主管');
     }
   }
 };
@@ -2563,21 +2636,35 @@ const ReviewPage = {
 const NotificationsPage = {
   template: `
     <div class="page">
-      <div class="section-title">🔔 通知中心</div>
-      <div v-for="n in store.notifications" :key="n.id" class="notif-item" :class="{ unread: n.unread }" @click="readNotif(n)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:18px;font-weight:700;">🔔 通知中心</div>
+        <div v-if="unreadCount" style="font-size:12px;color:var(--primary);font-weight:600;">{{ unreadCount }} 条未读</div>
+      </div>
+      <div v-if="!filteredNotifications.length" style="text-align:center;color:var(--text-3);font-size:13px;padding:40px 0;">暂无通知</div>
+      <div v-for="n in filteredNotifications" :key="n.id" class="notif-item" :class="{ unread: n.unread }" @click="handleNotif(n)" style="cursor:pointer;">
         <div class="notif-icon" :style="{ background: n.iconBg }">{{ n.icon }}</div>
         <div class="notif-body">
           <div class="notif-title">{{ n.title }}</div>
           <div class="notif-desc">{{ n.desc }}</div>
           <div class="notif-time">{{ n.time }}</div>
         </div>
+        <div v-if="n.link" style="color:var(--primary);font-size:18px;align-self:center;padding-left:4px;flex-shrink:0;">›</div>
       </div>
     </div>
   `,
+  computed: {
+    filteredNotifications() {
+      return store.notifications.filter(n => !n.forRole || n.forRole === store.currentRole);
+    },
+    unreadCount() {
+      return this.filteredNotifications.filter(n => n.unread).length;
+    }
+  },
   methods: {
-    readNotif(n) {
+    handleNotif(n) {
       n.unread = false;
-      toast('已读');
+      if (n.link) this.$router.push(n.link);
+      else toast('已读');
     }
   }
 };
