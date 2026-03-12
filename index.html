@@ -737,7 +737,7 @@ const DashboardPage = {
           <div v-for="q in todoQueues" :key="q.key"
             :style="expandedQueue === q.key ? 'border:1.5px solid var(--primary)' : 'border:1px solid var(--border)'"
             style="background:white;border-radius:12px;padding:12px;cursor:pointer;"
-            @click="expandedQueue = expandedQueue === q.key ? null : q.key">
+            @click="q.link ? $router.push(q.link) : (expandedQueue = expandedQueue === q.key ? null : q.key)">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
               <span style="font-size:13px;font-weight:600;color:var(--text);">{{ q.label }}</span>
               <span style="font-size:16px;">›</span>
@@ -951,7 +951,7 @@ const DashboardPage = {
       return store.workLogs.filter(l => l.userId === this.user.id).length;
     },
     unreadCount() {
-      return store.notifications.filter(n => n.unread).length;
+      return store.notifications.filter(n => n.unread && (!n.forRole || n.forRole === store.currentRole)).length;
     },
     planStatusHeadline() {
       if (!this.currentPlan) return '本周尚未创建计划';
@@ -985,11 +985,18 @@ const DashboardPage = {
       ];
     },
     todoQueues() {
+      const myId = currentUser().id;
+      const week = store.selectedWeek;
+      const pendingApprove = store.plans.filter(p => p.weekCode === week && p.status === 'submitted' && p.userId !== myId).length;
+      const pendingEval = store.plans
+        .filter(p => p.weekCode === week && p.status === 'approved' && p.userId !== myId)
+        .flatMap(p => p.tasks).filter(t => t.status === 'done' && !t.reviewResult).length;
+      const collabReceipts = store.plans.flatMap(p => p.tasks).filter(t => t.collabStatus === 'receipt_submitted').length;
       return [
-        { key: 'approve', label: '待审批', count: 1, color: 'var(--warning)', detail: '1条计划待审批' },
-        { key: 'evaluate', label: '待评估', count: 2, color: 'var(--success)', detail: '2项任务待评估' },
-        { key: 'duedate', label: '待改期', count: 1, color: 'var(--violet)', detail: '1条改期待审批' },
-        { key: 'collab', label: '待协办', count: 0, color: 'var(--cyan)', detail: '' },
+        { key: 'approve',  label: '待审批',  count: pendingApprove, color: 'var(--warning)', detail: pendingApprove + '条计划待审批', link: '/plans' },
+        { key: 'evaluate', label: '待评估',  count: pendingEval,    color: 'var(--success)', detail: pendingEval + '项任务待评估', link: '/plans' },
+        { key: 'duedate',  label: '待改期',  count: 1,              color: 'var(--violet)',  detail: '1条改期审批待处理' },
+        { key: 'collab',   label: '协办回执', count: collabReceipts, color: 'var(--cyan)',    detail: collabReceipts > 0 ? collabReceipts + '条协办回执待查看' : '暂无协办', link: '/plans' },
       ];
     }
   },
@@ -1324,11 +1331,32 @@ const PlanDetailPage = {
         <div style="font-size:13px;color:var(--text-2);">{{ plan.approvedBy }} {{ plan.weekCode }} 已完成可行性确认，进入执行阶段，重点关注本周关键交付与阻塞处理。</div>
       </div>
 
-      <!-- Task List Header (card with summary + add button) -->
+      <!-- Manager approval card (canApprove: plan submitted, waiting review) -->
+      <div v-if="canApprove" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1.5px solid #86efac;border-radius:14px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:700;color:#15803d;margin-bottom:6px;">📋 待审批</div>
+        <div style="font-size:13px;color:#166534;line-height:1.6;margin-bottom:12px;">共 {{ plan.tasks.length }} 项任务待确认，审批通过后计划将进入执行阶段。<br><span style="font-weight:600;">下一步：</span>确认任务范围和优先级，再决定通过或退回。</div>
+        <textarea v-model="comment" rows="2" placeholder="审批意见（可选）" style="width:100%;padding:10px 12px;border:1.5px solid #86efac;border-radius:10px;font-size:13px;resize:none;box-sizing:border-box;background:white;margin-bottom:12px;"></textarea>
+        <div style="display:flex;gap:10px;">
+          <button style="flex:1;padding:12px;border:1.5px solid var(--danger);background:white;color:var(--danger);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;" @click="showReturnModal = true">↩️ 退回修改</button>
+          <button style="flex:1;padding:12px;background:var(--success);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;" @click="approvePlan">✅ 审批通过</button>
+        </div>
+      </div>
+
+      <!-- 下一步操作提醒 card -->
       <div style="background:white;border-radius:14px;border:1px solid var(--border);padding:14px;margin-bottom:10px;">
-        <div style="font-size:14px;font-weight:600;">任务列表</div>
-        <div style="font-size:12px;color:var(--text-3);margin-top:3px;">共 {{ plan.tasks.length }} 项，已完成 {{ doneCount }} 项，高优未闭环 {{ highPriorityOpenCount }} 项<span v-if="pendingEvalTaskCount > 0">，待结果评估 {{ pendingEvalTaskCount }} 项</span></div>
-        <button v-if="canAddTask" style="width:100%;margin-top:10px;padding:10px;border:1.5px dashed var(--primary);background:none;border-radius:10px;color:var(--primary);font-size:14px;cursor:pointer;" @click="showAddTaskModal = true">+ 添加任务</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-size:14px;font-weight:600;">任务列表</div>
+          <div style="font-size:11px;color:var(--text-3);">{{ doneCount }}/{{ plan.tasks.length }} 已完成</div>
+        </div>
+        <!-- 下一步提醒 -->
+        <div style="display:flex;align-items:flex-start;gap:8px;background:#f8f9ff;border-radius:8px;padding:8px 10px;margin-bottom:10px;">
+          <span style="font-size:14px;flex-shrink:0;margin-top:1px;">{{ nextStepIcon }}</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--primary);">下一步操作</div>
+            <div style="font-size:12px;color:var(--text-2);margin-top:2px;line-height:1.5;">{{ nextStepDesc }}</div>
+          </div>
+        </div>
+        <button v-if="canAddTask" style="width:100%;padding:10px;border:1.5px dashed var(--primary);background:none;border-radius:10px;color:var(--primary);font-size:14px;cursor:pointer;" @click="showAddTaskModal = true">+ 添加任务</button>
       </div>
       <!-- Section label for manager viewing -->
       <div v-if="(canEvaluate || canApprove) && plan.tasks.length > 0" style="background:#dcfce7;border:1.5px solid #86efac;border-radius:10px;padding:8px 14px;margin-bottom:10px;font-size:13px;color:#16a34a;font-weight:500;">
@@ -1408,24 +1436,50 @@ const PlanDetailPage = {
         </div>
         </div><!-- end inner card -->
 
-        <!-- Task Action Buttons (manager/reviewer) -->
-        <div v-if="canEvaluate || canApprove" style="display:flex;gap:8px;margin-top:6px;">
-          <button style="display:flex;align-items:center;gap:4px;padding:8px 16px;border:1.5px solid #ede9fe;background:#f5f3ff;color:#7c3aed;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;" @click.stop="openEval(t)">
-            ★ 结果评估
+        <!-- Task Action Buttons: APPROVE phase (edit + collab) -->
+        <div v-if="canApprove" style="display:flex;gap:8px;margin-top:6px;">
+          <button style="display:flex;align-items:center;gap:4px;padding:8px 14px;border:1.5px solid #bfdbfe;background:#eff6ff;color:var(--primary);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;" @click.stop="startEditTask(t)">
+            ✏ 编辑任务
           </button>
           <button style="display:flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid var(--border);background:white;color:var(--text-2);border-radius:8px;font-size:12px;cursor:pointer;" @click.stop="expandedAuxId = expandedAuxId === t.id ? null : t.id">
-            {{ expandedAuxId === t.id ? '↑ 收起辅流程' : '↓ 更多操作（1）' }}
+            {{ expandedAuxId === t.id ? '↑ 收起' : '↓ 更多操作（1）' }}
           </button>
         </div>
-        <!-- Secondary action buttons (expanded) -->
-        <div v-if="(canEvaluate || canApprove) && expandedAuxId === t.id" style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
-          <button style="display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border:1.5px solid #fee2e2;background:#fef2f2;color:#dc2626;border-radius:10px;font-size:13px;cursor:pointer;" @click.stop="rejectCompletion(t)">
-            ⊘ 退回完成
-          </button>
-          <button style="display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border:1.5px solid #bae6fd;background:#f0f9ff;color:#0284c7;border-radius:10px;font-size:13px;cursor:pointer;" @click.stop="openCollab(t)">
+        <div v-if="canApprove && expandedAuxId === t.id" style="margin-top:6px;">
+          <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border:1.5px solid #bae6fd;background:#f0f9ff;color:#0284c7;border-radius:10px;font-size:13px;cursor:pointer;" @click.stop="openCollab(t)">
             ✈ 发起协办
           </button>
         </div>
+
+        <!-- Task Action Buttons: EVALUATE phase (evaluate / already-evaluated / collab status) -->
+        <template v-if="canEvaluate">
+          <!-- Collab status badges -->
+          <div v-if="t.collabStatus === 'receipt_submitted'" style="margin-top:6px;display:flex;gap:6px;align-items:center;">
+            <span style="background:#dcfce7;color:#16a34a;font-size:12px;padding:4px 12px;border-radius:8px;font-weight:600;">✅ 协办已完成</span>
+            <button v-if="t.status === 'done' && !t.reviewResult" style="padding:6px 14px;border:1.5px solid #ede9fe;background:#f5f3ff;color:#7c3aed;border-radius:8px;font-size:12px;cursor:pointer;" @click.stop="openEval(t)">★ 结果评估</button>
+          </div>
+          <div v-else-if="t.collabStatus === 'pending_hr'" style="margin-top:6px;">
+            <span style="background:#e0f2fe;color:#0369a1;font-size:12px;padding:4px 12px;border-radius:8px;font-weight:600;">✈ 协办进行中</span>
+          </div>
+          <!-- Evaluated badge -->
+          <div v-else-if="t.reviewResult" style="margin-top:6px;">
+            <span style="background:#dcfce7;color:#16a34a;font-size:12px;padding:4px 12px;border-radius:8px;font-weight:600;">✅ 已评估</span>
+          </div>
+          <!-- Evaluate + more actions (for done tasks not yet evaluated) -->
+          <div v-else-if="t.status === 'done'" style="display:flex;gap:8px;margin-top:6px;">
+            <button style="display:flex;align-items:center;gap:4px;padding:8px 16px;border:1.5px solid #ede9fe;background:#f5f3ff;color:#7c3aed;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;" @click.stop="openEval(t)">
+              ★ 结果评估
+            </button>
+            <button style="display:flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid var(--border);background:white;color:var(--text-2);border-radius:8px;font-size:12px;cursor:pointer;" @click.stop="expandedAuxId = expandedAuxId === t.id ? null : t.id">
+              {{ expandedAuxId === t.id ? '↑ 收起' : '↓ 更多操作' }}
+            </button>
+          </div>
+          <!-- More actions expanded (for done tasks) -->
+          <div v-if="t.status === 'done' && !t.reviewResult && expandedAuxId === t.id" style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+            <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border:1.5px solid #fee2e2;background:#fef2f2;color:#dc2626;border-radius:10px;font-size:13px;cursor:pointer;" @click.stop="rejectCompletion(t)">⊘ 退回完成</button>
+            <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border:1.5px solid #bae6fd;background:#f0f9ff;color:#0284c7;border-radius:10px;font-size:13px;cursor:pointer;" @click.stop="openCollab(t)">✈ 发起协办</button>
+          </div>
+        </template>
       </div><!-- end outer wrapper -->
 
       <!-- Bottom Buttons: Add Task + AI Import -->
@@ -1607,11 +1661,6 @@ const PlanDetailPage = {
             <button class="btn btn-sm" :class="evalResult === 'authorized_delay' ? 'btn-warning' : 'btn-outline'" @click="evalResult = 'authorized_delay'">⏰ 获权延期</button>
           </div>
 
-          <div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">评分（1-10）</div>
-          <div style="display:flex;gap:4px;margin-bottom:12px;">
-            <button v-for="n in 10" :key="n" style="width:28px;height:28px;border-radius:6px;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;transition:all 0.15s;" :style="{ background: evalScore === n ? 'var(--primary)' : 'var(--bg)', color: evalScore === n ? 'white' : 'var(--text-2)' }" @click="evalScore = n">{{ n }}</button>
-          </div>
-
           <div style="font-size:13px;color:var(--text-2);margin-bottom:6px;">评价意见</div>
           <textarea v-model="evalComment" rows="2" placeholder="输入评价意见..." style="margin-bottom:12px;"></textarea>
           <button class="btn btn-primary btn-block" @click="submitEval">确认评估</button>
@@ -1675,6 +1724,33 @@ const PlanDetailPage = {
     },
     l1Depts() { return store.departments.filter(d => !d.parentId); },
     isHRViewing() { return store.currentRole === 'HR'; },
+    nextStepIcon() {
+      if (!this.plan) return '📝';
+      if (this.canApprove) return '👆';
+      if (this.canEvaluate) return '⭐';
+      const s = this.plan.status;
+      if (s === 'draft') return '📝';
+      if (s === 'submitted') return '⏳';
+      if (s === 'returned') return '↩️';
+      if (s === 'approved') return '⚡';
+      if (s === 'reviewed') return '🎉';
+      return '📋';
+    },
+    nextStepDesc() {
+      if (!this.plan) return '';
+      if (this.canApprove) return '请先核查任务清单，可编辑任务内容，再决定审批通过或退回修改。';
+      if (this.canEvaluate) {
+        if (this.pendingEvalTaskCount > 0) return '有 ' + this.pendingEvalTaskCount + ' 项任务已完成，请及时进行结果评估。';
+        return '等待员工完成任务，完成后将在此处发起结果评估。';
+      }
+      const s = this.plan.status;
+      if (s === 'draft') return '请完善任务清单后提交审核，主管将收到审批通知。';
+      if (s === 'submitted') return '计划已提交，等待主管审批通过后即可开始执行。';
+      if (s === 'returned') return '计划已被退回，请查看上方退回原因，修改后重新提交。';
+      if (s === 'approved') return '任务执行中，更新任务状态为已完成，主管将收到评估通知。';
+      if (s === 'reviewed') return '本周已完成复盘，可前往复盘页查看沉淀内容。';
+      return '';
+    },
     pendingCollabTask() {
       if (!this.plan) return null;
       return this.plan.tasks.find(t => t.collabStatus === 'pending_hr') || null;
@@ -1696,8 +1772,8 @@ const PlanDetailPage = {
     priorityStars(priority) { return priority === 'high' ? 5 : priority === 'medium' ? 4 : 3; },
     openCollab(t) {
       this.collabTask = t;
-      this.collabDept = '';
-      this.collabNote = '';
+      this.collabDept = 4;
+      this.collabNote = '需要行政人事中心配合，协助联系外部访谈对象并提供客户联系名单，预计需要2个工作日完成对接工作';
       this.showCollabModal = true;
     },
     submitCollab() {
@@ -1730,7 +1806,12 @@ const PlanDetailPage = {
     cycleStatus(t) {
       if (this.isManagerViewing && !this.isOwnPlan) return;
       if (t.status === 'todo') t.status = 'progress';
-      else if (t.status === 'progress') t.status = 'done';
+      else if (t.status === 'progress') {
+        t.status = 'done';
+        if (this.isOwnPlan && this.plan && this.plan.status === 'approved') {
+          store.notifications.unshift({ id: Date.now(), forRole: 'MANAGER', type: 'task_done', title: '任务已完成待评估', desc: (this.plan.userName || '员工') + '「' + t.title + '」已标记完成，待您进行结果评估', time: '刚刚', unread: true, icon: '⭐', iconBg: 'var(--violet-soft)', link: '/plans/' + this.plan.id });
+        }
+      }
       else t.status = 'todo';
     },
     startEditTask(t) {
