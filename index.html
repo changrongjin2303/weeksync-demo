@@ -986,14 +986,17 @@ const DashboardPage = {
 
 // My Plans Page
 const MyPlansPage = {
-  data() { return { view: 'my', tab: 'current', teamTab: 'members', showQuotaEdit: false, quota: 3, showAddProject: false, newProjectName: '' }; },
+  data() { return {
+    view: 'my', tab: 'current', teamTab: 'members',
+    showProjectEdit: false, quota: 3, newProjectName: '', newProjectCode: ''
+  }; },
   template: `
     <div class="page">
-      <!-- View Toggle: My Plan / Team Plan -->
-      <div v-if="isManager" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div style="font-size:18px;font-weight:700;">{{ view === 'my' ? '我的计划' : '团队计划' }}</div>
-        <button class="btn btn-sm" :class="view === 'team' ? 'btn-primary' : 'btn-outline'" @click="view = view === 'my' ? 'team' : 'my'">
-          {{ view === 'my' ? '👥 团队计划' : '📝 我的计划' }}
+      <!-- Header with view toggle -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:20px;font-weight:700;">{{ view === 'my' ? (isManager ? '我的计划' : '计划') : '团队计划' }}</div>
+        <button class="btn btn-sm btn-outline" @click="view = view === 'my' ? 'team' : 'my'" style="font-size:13px;padding:5px 14px;border-radius:20px;">
+          {{ view === 'my' ? '👥 团队计划' : (isManager ? '📝 我的计划' : '📝 个人计划') }}
         </button>
       </div>
 
@@ -1007,19 +1010,23 @@ const MyPlansPage = {
         </div>
 
         <div v-if="tab === 'current'">
-          <div v-if="currentPlan" class="list-item" @click="$router.push('/plans/' + currentPlan.id)">
-            <div class="list-item-header">
-              <div class="list-item-title">{{ currentPlan.weekCode }} 周计划</div>
+          <div v-if="currentPlan" class="card" style="cursor:pointer;padding:14px;" @click="$router.push('/plans/' + currentPlan.id)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <div style="font-size:15px;font-weight:700;">{{ currentPlan.weekCode }} 周计划</div>
               <span class="badge" :class="'badge-' + currentPlan.status">{{ statusLabel(currentPlan.status) }}</span>
             </div>
-            <div style="margin: 8px 0;">
-              <div v-for="t in currentPlan.tasks" :key="t.id" style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-                <span :style="{ color: t.status === 'done' ? 'var(--success)' : t.status === 'progress' ? 'var(--primary)' : 'var(--text-3)' }">{{ t.status === 'done' ? '✅' : t.status === 'progress' ? '🔵' : '⚪' }}</span>
+            <div style="margin-bottom:10px;">
+              <div v-for="t in currentPlan.tasks" :key="t.id" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bg);">
+                <span style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;" :style="{ background: t.status === 'done' ? 'var(--success)' : t.status === 'progress' ? 'var(--primary)' : '#d0d5dd' }"></span>
                 <span style="font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :style="t.status === 'done' ? 'text-decoration:line-through;color:var(--text-3)' : ''">{{ t.title }}</span>
                 <span class="badge" :class="'badge-' + t.priority" style="font-size:10px;padding:1px 6px;">{{ priorityLabel(t.priority) }}</span>
               </div>
             </div>
-            <div class="progress-bar" style="margin-top:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-3);margin-bottom:4px;">
+              <span>{{ currentPlan.tasks.filter(t=>t.status==='done').length }}/{{ currentPlan.tasks.length }} 完成</span>
+              <span>{{ completionRate }}%</span>
+            </div>
+            <div class="progress-bar">
               <div class="progress-fill" :style="{ width: completionRate + '%', background: 'var(--success)' }"></div>
             </div>
             <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--text-3);">
@@ -1034,27 +1041,24 @@ const MyPlansPage = {
         </div>
 
         <div v-if="tab === 'history'">
-          <div v-for="p in historyPlans" :key="p.id" class="list-item" @click="$router.push('/plans/' + p.id)">
-            <div class="list-item-header">
-              <div class="list-item-title">{{ p.weekCode }} 周计划</div>
+          <div v-for="p in historyPlans" :key="p.id" class="card" style="cursor:pointer;margin-bottom:8px;padding:12px 14px;" @click="$router.push('/plans/' + p.id)">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:14px;font-weight:600;">{{ p.weekCode }} 周计划</div>
               <span class="badge" :class="'badge-' + p.status">{{ statusLabel(p.status) }}</span>
             </div>
-            <div class="list-item-meta">
-              <span>📝 {{ p.tasks.length }} 个任务</span>
-              <span>✅ {{ p.tasks.filter(t=>t.status==='done').length }}/{{ p.tasks.length }}</span>
-            </div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:6px;">{{ p.tasks.length }} 个任务 · {{ p.tasks.filter(t=>t.status==='done').length }}/{{ p.tasks.length }} 已完成</div>
           </div>
         </div>
       </div>
 
-      <!-- ========== TEAM PLAN VIEW (Manager only) ========== -->
-      <div v-if="view === 'team' && isManager">
+      <!-- ========== TEAM PLAN VIEW ========== -->
+      <div v-if="view === 'team'">
         <div class="tabs">
           <div class="tab" :class="{ active: teamTab === 'members' }" @click="teamTab = 'members'">团队成员</div>
           <div class="tab" :class="{ active: teamTab === 'projects' }" @click="teamTab = 'projects'">部门项目</div>
         </div>
 
-        <!-- Members -->
+        <!-- Members Tab -->
         <div v-if="teamTab === 'members'">
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;">
             <div style="text-align:center;padding:10px 4px;background:var(--surface);border-radius:10px;box-shadow:var(--shadow-sm);">
@@ -1077,7 +1081,7 @@ const MyPlansPage = {
 
           <div v-for="m in members" :key="m.id" class="card" style="padding:12px 14px;cursor:pointer;" @click="goToPlan(m)">
             <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:white;background:var(--primary);">{{ m.name[0] }}</div>
+              <div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white;background:var(--primary);flex-shrink:0;">{{ m.name[0] }}</div>
               <div style="flex:1;min-width:0;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                   <div style="font-size:14px;font-weight:600;">{{ m.name }}</div>
@@ -1088,8 +1092,8 @@ const MyPlansPage = {
               </div>
             </div>
             <div v-if="m.plan" style="margin-top:10px;">
-              <div v-for="t in m.plan.tasks.slice(0,3)" :key="t.id" style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px;">
-                <span :style="{ color: t.status === 'done' ? 'var(--success)' : t.status === 'progress' ? 'var(--primary)' : 'var(--text-3)' }">{{ t.status === 'done' ? '✅' : t.status === 'progress' ? '🔵' : '⚪' }}</span>
+              <div v-for="t in m.plan.tasks.slice(0,3)" :key="t.id" style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--bg);">
+                <span style="width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;" :style="{ background: t.status === 'done' ? 'var(--success)' : t.status === 'progress' ? 'var(--primary)' : '#d0d5dd' }"></span>
                 <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :style="t.status === 'done' ? 'color:var(--text-3);text-decoration:line-through' : ''">{{ t.title }}</span>
                 <span class="badge" :class="'badge-' + t.priority" style="font-size:9px;padding:0 5px;">{{ priorityLabel(t.priority) }}</span>
               </div>
@@ -1098,41 +1102,66 @@ const MyPlansPage = {
               </div>
               <div class="progress-bar" style="margin-top:4px;"><div class="progress-fill" :style="{ width: m.rate + '%', background: m.rate >= 80 ? 'var(--success)' : m.rate >= 50 ? 'var(--warning)' : 'var(--danger)' }"></div></div>
             </div>
-            <div v-if="m.plan && m.plan.status === 'submitted'" style="display:flex;gap:6px;margin-top:8px;" @click.stop>
-              <button class="btn btn-success btn-sm" style="flex:1;font-size:11px;padding:5px;" @click="quickApprove(m.plan)">✅ 通过</button>
-              <button class="btn btn-outline btn-sm" style="flex:1;font-size:11px;padding:5px;" @click="$router.push('/plans/' + m.plan.id)">查看详情</button>
+            <div v-if="m.plan && m.plan.status === 'submitted'" style="display:flex;gap:6px;margin-top:10px;" @click.stop>
+              <button class="btn btn-success btn-sm" style="flex:1;font-size:12px;padding:8px;" @click="quickApprove(m.plan)">✓ 通过</button>
+              <button class="btn btn-outline btn-sm" style="flex:1;font-size:12px;padding:8px;" @click.stop="$router.push('/plans/' + m.plan.id)">查看详情</button>
             </div>
           </div>
         </div>
 
-        <!-- Projects -->
+        <!-- Projects Tab -->
         <div v-if="teamTab === 'projects'">
-          <div class="card">
-            <div class="card-title"><span class="icon">⭐</span>高优先级任务配额</div>
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div style="font-size:13px;color:var(--text-2);">每人每周最多 <strong>{{ quota }}</strong> 个高优任务</div>
-              <div v-if="!showQuotaEdit"><button class="btn btn-outline btn-sm" style="font-size:11px;padding:4px 10px;" @click="showQuotaEdit = true">调整</button></div>
-              <div v-else style="display:flex;gap:6px;align-items:center;"><input type="number" v-model.number="quota" min="1" max="10" style="width:60px;padding:4px 8px;font-size:13px;" /><button class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;" @click="showQuotaEdit = false; toast('配额已更新')">保存</button></div>
+          <div class="card" style="padding:0;overflow:hidden;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">
+              <span style="font-weight:600;font-size:14px;">团队项目（{{ deptName }}）</span>
+              <span style="color:var(--primary);font-size:12px;cursor:pointer;" @click="showProjectEdit = !showProjectEdit">✏️ {{ showProjectEdit ? '收起编辑' : '展开编辑' }}</span>
+            </div>
+            <div v-if="showProjectEdit" style="padding:12px 14px;background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+              <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">本部门高优先级任务数量（提交时需恰好满足）</div>
+              <div style="display:flex;gap:8px;margin-bottom:6px;">
+                <input type="number" v-model.number="quota" min="1" max="10" style="flex:1;padding:8px 12px;font-size:14px;" />
+                <button class="btn btn-primary" @click="saveQuota">保存</button>
+              </div>
+              <div style="font-size:12px;color:var(--text-3);margin-bottom:14px;">当前生效：{{ quota }} 个</div>
+              <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">新增部门级项目（自动进入待审批，由平台管理员或董事长/CEO确认后生效）</div>
+              <input v-model="newProjectName" placeholder="项目名称" style="margin-bottom:6px;" />
+              <input v-model="newProjectCode" placeholder="项目代码（可选）" style="margin-bottom:8px;" />
+              <button class="btn btn-primary btn-block" style="border-radius:22px;" :disabled="!newProjectName" @click="createProject">+ 新增项目</button>
+            </div>
+            <div style="padding:0 14px;">
+              <div v-for="p in deptProjects" :key="p.id" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bg);">
+                <div>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:13px;font-weight:600;">{{ p.name }}</span>
+                    <span class="badge" :class="p.status === 'approved' ? 'badge-approved' : 'badge-submitted'">{{ p.status === 'approved' ? '已审批' : '待审批' }}</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--text-3);margin-top:2px;">{{ p.code || '无编码' }}</div>
+                </div>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 8px;">编辑</button>
+                  <button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 8px;color:var(--warning);border-color:var(--warning);">停用</button>
+                  <button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 8px;color:var(--danger);border-color:var(--danger);">删除</button>
+                </div>
+              </div>
+            </div>
+            <div style="padding:10px 14px;background:var(--bg);border-top:1px solid var(--border);margin-top:4px;">
+              <div style="font-size:12px;color:var(--text-2);margin-bottom:6px;">高优先级任务需求：{{ quota }} 个</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                <span v-for="p in deptProjects.filter(p=>p.status==='approved')" :key="p.id" style="background:white;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text-2);">{{ p.name }}{{ p.code ? ' (' + p.code + ')' : '' }}</span>
+              </div>
             </div>
           </div>
-          <div v-for="p in deptProjects" :key="p.id" class="list-item">
-            <div class="list-item-header">
-              <div><div class="list-item-title">{{ p.name }}</div><div style="font-size:11px;color:var(--text-3);">{{ p.code || '无编码' }} · {{ p.dept }}</div></div>
-              <span class="badge" :class="p.status === 'approved' ? 'badge-approved' : 'badge-submitted'">{{ p.status === 'approved' ? '已审批' : '待审批' }}</span>
-            </div>
-          </div>
-          <div v-if="showAddProject" class="card" style="border:2px dashed var(--primary);">
-            <input v-model="newProjectName" placeholder="项目名称 *" style="margin-bottom:8px;" />
-            <div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">💡 部门级项目创建后需管理员审批</div>
-            <div class="btn-group"><button class="btn btn-primary btn-sm" :disabled="!newProjectName" @click="createProject">创建</button><button class="btn btn-outline btn-sm" @click="showAddProject = false">取消</button></div>
-          </div>
-          <button v-else class="btn btn-outline btn-block" style="margin-top:8px;" @click="showAddProject = true">+ 创建部门项目</button>
         </div>
       </div>
     </div>
   `,
   computed: {
-    isManager() { return store.currentRole === 'MANAGER'; },
+    isManager() { return store.currentRole === 'MANAGER' || store.currentRole === 'BOSS'; },
+    deptName() {
+      const u = currentUser();
+      const d = store.departments.find(d => d.id === u.deptId);
+      return d ? d.name : (u.dept || '本部门');
+    },
     currentPlan() {
       const uid = currentUser().id;
       return store.plans.find(p => p.userId === uid && p.weekCode === '2026-W11');
@@ -1163,7 +1192,13 @@ const MyPlansPage = {
     statusLabel, taskStatusLabel, priorityLabel,
     goToPlan(m) { if (m.plan) this.$router.push('/plans/' + m.plan.id); else toast(m.name + ' 尚未创建计划'); },
     quickApprove(plan) { plan.status = 'approved'; plan.approvedBy = currentUser().name; toast('✅ 已审批通过 ' + plan.userName); },
-    createProject() { store.projects.push({ id: Date.now(), name: this.newProjectName, level: 'department', status: 'pending', dept: '产品部', creator: '王强', code: '', isActive: true, isArchived: false }); toast('📁 项目已创建'); this.newProjectName = ''; this.showAddProject = false; },
+    saveQuota() { toast('配额已更新为 ' + this.quota + ' 个'); },
+    createProject() {
+      store.projects.push({ id: Date.now(), name: this.newProjectName, level: 'department', status: 'pending', dept: '产品部', creator: currentUser().name, code: this.newProjectCode, isActive: true, isArchived: false });
+      toast('📁 项目已创建，等待审批');
+      this.newProjectName = '';
+      this.newProjectCode = '';
+    },
     createPlan() {
       const user = currentUser();
       const mockTasksByRole = {
@@ -1208,6 +1243,18 @@ const MyPlansPage = {
 const PlanDetailPage = {
   template: `
     <div class="page" v-if="plan">
+      <!-- Plan Closed: Summary Card -->
+      <div v-if="plan.status === 'reviewed'" class="card" style="margin-bottom:12px;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:6px;">本周闭环已完成</div>
+        <div style="font-size:13px;color:var(--text-2);margin-bottom:8px;">计划已完成结果评估，建议进入复盘页查看沉淀内容。</div>
+        <div style="font-size:13px;color:var(--text-2);margin-bottom:12px;">{{ plan.userName }} 本周完成度整体可控，复盘已沉淀到项目与任务维度。</div>
+        <button class="btn btn-primary" style="border-radius:22px;padding:8px 20px;" @click="$router.push('/review')">去看复盘</button>
+      </div>
+      <!-- Supervisor Feedback Card -->
+      <div v-if="plan.status === 'reviewed'" style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:600;color:#ea580c;margin-bottom:6px;">上一级负责人意见</div>
+        <div style="font-size:13px;color:#c2410c;">上一级负责人已补充复盘意见，建议保持节奏并关注风险项。</div>
+      </div>
       <!-- Plan Info Card -->
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -1236,7 +1283,7 @@ const PlanDetailPage = {
 
       <!-- Task List -->
       <div class="section-title">📋 任务列表（{{ plan.tasks.length }}）</div>
-      <div v-for="t in plan.tasks" :key="t.id" class="task-item" style="position:relative;">
+      <div v-for="t in plan.tasks" :key="t.id" class="task-item" style="position:relative;" :style="plan.status === 'reviewed' ? { borderLeft: '3px solid ' + (t.priority === 'high' ? 'var(--primary)' : t.priority === 'medium' ? 'var(--warning)' : 'var(--text-3)'), paddingLeft: '14px', borderRadius: '0 8px 8px 0' } : {}">
         <!-- Edit Mode -->
         <div v-if="editingTaskId === t.id" style="width:100%;">
           <div style="font-size:12px;font-weight:600;color:var(--primary);margin-bottom:8px;">编辑任务</div>
