@@ -2534,6 +2534,9 @@ const NotificationsPage = {
 
 // ===================== BOSS PAGES =====================
 const BossDashboard = {
+  data() {
+    return { deptMetric: 'submission' };
+  },
   template: `
     <div class="page">
       <workspace-mode-bar />
@@ -2543,43 +2546,47 @@ const BossDashboard = {
       </div>
       <week-selector />
 
-      <!-- Row 1: Core execution metrics (colored dashed cards) -->
+      <!-- Row 1: Core execution metrics (colored dashed) -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
-        <div style="background:#e8f5fd;border:1.5px dashed #5bc4e0;border-radius:12px;padding:14px 10px;">
-          <div style="font-size:11px;color:#5bc4e0;margin-bottom:6px;">完成率</div>
-          <div style="font-size:22px;font-weight:800;color:#2d9fc5;">{{ completionRate }}%</div>
+        <div style="background:#e8f5fd;border:1.5px dashed #5bc4e0;border-radius:12px;padding:12px 8px;">
+          <div style="font-size:10px;color:#5bc4e0;margin-bottom:5px;">完成率</div>
+          <div style="font-size:20px;font-weight:800;color:#2d9fc5;">{{ completionRate }}%</div>
         </div>
-        <div style="background:#eafaf1;border:1.5px dashed #52c47a;border-radius:12px;padding:14px 10px;">
-          <div style="font-size:11px;color:#52c47a;margin-bottom:6px;">已完成</div>
-          <div style="font-size:22px;font-weight:800;color:#27ae60;">{{ doneCount }}</div>
+        <div style="background:#eafaf1;border:1.5px dashed #52c47a;border-radius:12px;padding:12px 8px;">
+          <div style="font-size:10px;color:#52c47a;margin-bottom:5px;">已完成</div>
+          <div style="font-size:20px;font-weight:800;color:#27ae60;">{{ doneCount }}</div>
         </div>
-        <div style="background:#fff8e6;border:1.5px dashed #f2994a;border-radius:12px;padding:14px 10px;">
-          <div style="font-size:11px;color:#f2994a;margin-bottom:6px;">获权延期</div>
-          <div style="font-size:22px;font-weight:800;color:#e07b1a;">{{ extendedCount }}</div>
+        <div style="background:#fff8e6;border:1.5px dashed #f2994a;border-radius:12px;padding:12px 8px;">
+          <div style="font-size:10px;color:#f2994a;margin-bottom:5px;">获权延期</div>
+          <div style="font-size:20px;font-weight:800;color:#e07b1a;">{{ extendedCount }}</div>
         </div>
-        <div style="background:#fff0f0;border:1.5px dashed #eb5757;border-radius:12px;padding:14px 10px;">
-          <div style="font-size:11px;color:#eb5757;margin-bottom:6px;">未完成</div>
-          <div style="font-size:22px;font-weight:800;color:#e03e3e;">{{ pendingCount }}</div>
+        <div style="background:#fff0f0;border:1.5px dashed #eb5757;border-radius:12px;padding:12px 8px;">
+          <div style="font-size:10px;color:#eb5757;margin-bottom:5px;">未完成</div>
+          <div style="font-size:20px;font-weight:800;color:#e03e3e;">{{ pendingCount }}</div>
         </div>
       </div>
 
-      <!-- Row 2: Coverage metrics (grey) -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
-        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
-          <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">涉及项目</div>
-          <div style="font-size:22px;font-weight:800;color:var(--text-1);">{{ projectCount }}</div>
+      <!-- Row 2: Coverage metrics (grey) — 5 columns including 任务数 -->
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px;">
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:10px 6px;">
+          <div style="font-size:10px;color:var(--text-3);margin-bottom:4px;">任务数</div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-1);">{{ allTasks.length }}</div>
         </div>
-        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
-          <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">涉及部门</div>
-          <div style="font-size:22px;font-weight:800;color:var(--text-1);">{{ deptCount }}</div>
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:10px 6px;">
+          <div style="font-size:10px;color:var(--text-3);margin-bottom:4px;">涉及项目</div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-1);">{{ projectCount }}</div>
         </div>
-        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
-          <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">协作项目</div>
-          <div style="font-size:22px;font-weight:800;color:var(--text-1);">{{ collabCount }}</div>
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:10px 6px;">
+          <div style="font-size:10px;color:var(--text-3);margin-bottom:4px;">涉及部门</div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-1);">{{ deptCount }}</div>
         </div>
-        <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:14px 10px;">
-          <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">动态</div>
-          <div style="font-size:22px;font-weight:800;color:var(--text-1);">{{ dynamicsCount }}</div>
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:10px 6px;">
+          <div style="font-size:10px;color:var(--text-3);margin-bottom:4px;">协作项目</div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-1);">{{ collabCount }}</div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:10px 6px;">
+          <div style="font-size:10px;color:var(--text-3);margin-bottom:4px;">动态</div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-1);">{{ dynamicsCount }}</div>
         </div>
       </div>
 
@@ -2588,20 +2595,34 @@ const BossDashboard = {
         ⚠️ {{ lowRateDepts.map(d=>d.name).join('、') }}本周提交率偏低，低于公司标准（90%）
       </div>
 
-      <!-- Department Performance -->
-      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">🏢 部门执行概览</div>
-      <div v-for="d in l1Depts" :key="d.id" class="card" style="padding:12px 14px;margin-bottom:8px;">
+      <!-- Department Performance with metric toggle -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:700;">🏢 部门执行概览</div>
+        <div style="display:flex;gap:4px;background:#f0f0f5;border-radius:20px;padding:3px;">
+          <button v-for="m in deptMetrics" :key="m.key"
+            @click="deptMetric = m.key"
+            style="font-size:11px;padding:4px 10px;border-radius:16px;border:none;cursor:pointer;transition:all 0.2s;"
+            :style="deptMetric === m.key ? 'background:white;box-shadow:0 1px 3px rgba(0,0,0,0.1);color:var(--primary);font-weight:600;' : 'background:transparent;color:var(--text-3);'">
+            {{ m.label }}
+          </button>
+        </div>
+      </div>
+      <div v-for="(d, idx) in l1Depts" :key="d.id" class="card" style="padding:12px 14px;margin-bottom:8px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-size:14px;font-weight:600;">{{ d.name }}</div>
-            <div style="font-size:12px;color:var(--text-3);">{{ d.leader }} · {{ d.members }}人</div>
+            <div style="font-size:12px;color:var(--text-3);">{{ d.leader }} · {{ d.members }}人 · {{ allTasks.length ? deptTaskCount(d.name) : '-' }}个任务</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-size:20px;font-weight:700;" :style="{ color: d.planRate >= 90 ? 'var(--success)' : d.planRate >= 80 ? 'var(--primary)' : 'var(--danger)' }">{{ d.planRate }}%</div>
-            <div style="font-size:11px;color:var(--text-3);">提交率</div>
+            <div style="font-size:20px;font-weight:700;" :style="{ color: metricColor(deptMetricVal(idx), deptMetric) }">
+              {{ deptMetricVal(idx) }}%
+            </div>
+            <div style="font-size:11px;color:var(--text-3);">{{ currentMetricLabel }}</div>
           </div>
         </div>
-        <div class="progress-bar" style="margin-top:8px;"><div class="progress-fill" :style="{ width: d.planRate + '%', background: d.planRate >= 90 ? 'var(--success)' : d.planRate >= 80 ? 'var(--primary)' : 'var(--danger)' }"></div></div>
+        <div class="progress-bar" style="margin-top:8px;">
+          <div class="progress-fill" :style="{ width: deptMetricVal(idx) + '%', background: metricColor(deptMetricVal(idx), deptMetric) }"></div>
+        </div>
       </div>
 
       <!-- Plan status donut -->
@@ -2631,7 +2652,7 @@ const BossDashboard = {
           <span style="font-size:13px;font-weight:600;">组织洞察</span>
         </div>
         <div style="font-size:13px;line-height:1.8;">
-          <p>• 本周整体任务完成率 {{ completionRate }}%，共 {{ doneCount }} 个任务已关闭</p>
+          <p>• 本周共 {{ allTasks.length }} 个任务，完成率 {{ completionRate }}%，已关闭 {{ doneCount }} 个</p>
           <p>• 共涉及 {{ projectCount }} 个项目，横跨 {{ deptCount }} 个部门，跨部协作 {{ collabCount }} 项</p>
           <p v-if="lowRateDepts.length">• {{ lowRateDepts.map(d=>d.name).join('、') }}提交率偏低，建议重点关注</p>
           <p>• 获批延期 {{ extendedCount }} 条，未完成 {{ pendingCount }} 个任务，需持续跟进</p>
@@ -2664,6 +2685,47 @@ const BossDashboard = {
     reviewedPct() { return this.totalPlans ? Math.round(this.reviewedPlans / this.totalPlans * 100) : 35; },
     approvedPct() { return this.totalPlans ? Math.round(this.approvedPlans / this.totalPlans * 100) : 20; },
     pendingPct() { return this.totalPlans ? Math.round(this.submittedPlans / this.totalPlans * 100) : 25; },
+    deptMetrics() {
+      return [
+        { key: 'submission', label: '提交率' },
+        { key: 'completion', label: '完成率' },
+        { key: 'delay', label: '延期率' },
+        { key: 'incomplete', label: '未完成率' },
+      ];
+    },
+    currentMetricLabel() {
+      return (this.deptMetrics.find(m => m.key === this.deptMetric) || {}).label || '';
+    },
+    // Mock per-dept rates for each metric dimension
+    mockDeptData() {
+      return [
+        { submission: 92, completion: 88, delay: 8,  incomplete: 12 },
+        { submission: 87, completion: 75, delay: 15, incomplete: 25 },
+        { submission: 95, completion: 92, delay: 5,  incomplete: 8  },
+        { submission: 90, completion: 85, delay: 10, incomplete: 15 },
+        { submission: 76, completion: 70, delay: 22, incomplete: 30 },
+        { submission: 83, completion: 80, delay: 9,  incomplete: 18 },
+        { submission: 100, completion: 95, delay: 3, incomplete: 5  },
+        { submission: 88, completion: 82, delay: 12, incomplete: 14 },
+      ];
+    },
+  },
+  methods: {
+    deptMetricVal(idx) {
+      const row = this.mockDeptData[idx] || this.mockDeptData[0];
+      return row[this.deptMetric] || 0;
+    },
+    metricColor(val, metric) {
+      if (metric === 'delay' || metric === 'incomplete') {
+        return val < 10 ? 'var(--success)' : val < 20 ? 'var(--warning)' : 'var(--danger)';
+      }
+      return val >= 90 ? 'var(--success)' : val >= 80 ? 'var(--primary)' : 'var(--danger)';
+    },
+    deptTaskCount(deptName) {
+      return store.plans
+        .filter(p => p.weekCode === store.selectedWeek && p.dept === deptName)
+        .flatMap(p => p.tasks).length;
+    },
   }
 };
 
