@@ -3460,7 +3460,7 @@ const HrDashboard = {
     },
     coverageRate() { return this.totalUsers ? Math.round(this.submittedCount / this.totalUsers * 100) : 0; },
     overdueCount() { return 5; },
-    onTimeRate() { return this.submittedCount ? Math.round((this.submittedCount - this.overdueCount) / this.submittedCount * 100) : 0; },
+    onTimeRate() { return this.totalUsers ? Math.round((this.submittedCount - this.overdueCount) / this.totalUsers * 100) : 0; },
     rankedDepts() { return [...this.l1Depts].sort((a,b) => b.planRate - a.planRate); },
     lowRateDepts() { return this.l1Depts.filter(d => d.planRate < 80); },
   }
