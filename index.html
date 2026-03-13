@@ -1423,8 +1423,11 @@ const PlanDetailPage = {
       </div>
 
       <!-- All tasks done banner -->
-      <div v-if="allTasksDone && plan.tasks.length > 0" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:12px;text-align:center;font-size:13px;color:var(--primary);">
-        本周任务已全部完成，请前往复盘
+      <div v-if="allTasksDone && !allEvaluated && plan.tasks.length > 0" style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:10px 14px;margin-bottom:12px;text-align:center;font-size:13px;color:#92400e;">
+        ⭐ 任务全部完成，等待主管进行结果评估
+      </div>
+      <div v-if="allEvaluated && plan.tasks.length > 0" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:12px;text-align:center;font-size:13px;color:var(--primary);">
+        ✅ 评估已完成，可前往复盘页生成本周沉淀
       </div>
 
       <!-- Task Cards (expandable) -->
@@ -1445,7 +1448,7 @@ const PlanDetailPage = {
             <span v-else style="background:#f3f4f6;color:#6b7280;font-size:11px;padding:2px 8px;border-radius:6px;">待开始</span>
             <span v-if="t.reviewResult === 'completed'" style="background:#dcfce7;color:#16a34a;font-size:11px;padding:2px 8px;border-radius:6px;">已完成</span>
             <span v-if="t.reviewResult === 'incomplete'" style="background:#fee2e2;color:#dc2626;font-size:11px;padding:2px 8px;border-radius:6px;">未完成</span>
-            <span v-if="t.reviewResult === 'authorized_delay'" style="background:#fef3c7;color:#d97706;font-size:11px;padding:2px 8px;border-radius:6px;">获权延期</span>
+            <span v-if="t.reviewResult === 'authorized_delay'" style="background:#fef3c7;color:#d97706;font-size:11px;padding:2px 8px;border-radius:6px;">获权延期{{ t.authorizedDueDate ? ' · 至' + t.authorizedDueDate : '' }}</span>
             <span style="margin-left:auto;color:var(--text-3);font-size:13px;">{{ expandedTaskId === t.id ? '▲' : '▽' }}</span>
           </div>
           <div style="font-size:12px;color:var(--text-3);">
@@ -1760,6 +1763,13 @@ const PlanDetailPage = {
             <button class="btn btn-sm" :class="evalResult === 'authorized_delay' ? 'btn-warning' : 'btn-outline'" @click="evalResult = 'authorized_delay'">⏰ 获权延期</button>
           </div>
 
+          <!-- 获权延期 new due date picker -->
+          <div v-if="evalResult === 'authorized_delay'" style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:12px;margin-bottom:12px;">
+            <div style="font-size:13px;color:#92400e;font-weight:600;margin-bottom:8px;">⏰ 延期截止日期</div>
+            <div style="font-size:12px;color:#78350f;margin-bottom:8px;">原截止日期：{{ evalTask ? evalTask.dueDate : '' }}，请设置新的完成期限</div>
+            <input type="date" v-model="evalNewDueDate" style="width:100%;padding:10px 12px;border:1.5px solid #fcd34d;border-radius:10px;font-size:13px;background:white;box-sizing:border-box;" />
+          </div>
+
           <div style="font-size:13px;color:var(--text-2);margin-bottom:6px;">评价意见</div>
           <textarea v-model="evalComment" rows="2" placeholder="输入评价意见..." style="margin-bottom:12px;"></textarea>
           <button class="btn btn-primary btn-block" @click="submitEval">确认评估</button>
@@ -1767,7 +1777,7 @@ const PlanDetailPage = {
       </div>
     </div>
   `,
-  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalComment: '本周任务完成质量较好，按时交付，后续继续保持。', comment: '任务描述过于笼统，请具体说明各任务的可交付物，并补充完成标准', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, expandedAuxId: null, showCollabModal: false, collabTask: null, collabDept: 4, collabNote: '需要行政人事中心配合，协助联系外部访谈对象并提供客户联系名单，预计需要2个工作日完成对接工作', showCollabReceiptModal: false, showAssignHandlerModal: false, collabHandlerName: '李明（行政专员）', collabReceiptNote: '行政人事中心将全力配合，已安排专员联系相关客户，预计3月15日前完成名单对接并提供详细清单。', newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '吴文建', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
+  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalNewDueDate: '2026-03-22', evalComment: '本周任务完成质量较好，按时交付，后续继续保持。', comment: '任务描述过于笼统，请具体说明各任务的可交付物，并补充完成标准', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, expandedAuxId: null, showCollabModal: false, collabTask: null, collabDept: 4, collabNote: '需要行政人事中心配合，协助联系外部访谈对象并提供客户联系名单，预计需要2个工作日完成对接工作', showCollabReceiptModal: false, showAssignHandlerModal: false, collabHandlerName: '李明（行政专员）', collabReceiptNote: '行政人事中心将全力配合，已安排专员联系相关客户，预计3月15日前完成名单对接并提供详细清单。', newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '吴文建', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
   computed: {
     plan() { return store.plans.find(p => p.id === parseInt(this.$route.params.id)); },
     isManagerViewing() { return store.currentRole === 'MANAGER' || store.currentRole === 'BOSS'; },
@@ -1846,7 +1856,10 @@ const PlanDetailPage = {
       if (s === 'draft') return '请完善任务清单后提交审核，主管将收到审批通知。';
       if (s === 'submitted') return '计划已提交，等待主管审批通过后即可开始执行。';
       if (s === 'returned') return '计划已被退回，请查看上方退回原因，修改后重新提交。';
-      if (s === 'approved') return '任务执行中，更新任务状态为已完成，主管将收到评估通知。';
+      if (s === 'approved') {
+        if (this.allTasksDone) return '任务已全部完成，等待主管进行结果评估，评估完成后可前往复盘。';
+        return '任务执行中，更新任务状态为已完成，主管将收到评估通知。';
+      }
       if (s === 'reviewed') return '本周已完成复盘，可前往复盘页查看沉淀内容。';
       return '';
     },
@@ -1952,9 +1965,13 @@ const PlanDetailPage = {
       if (this.evalTask) {
         this.evalTask.reviewResult = this.evalResult;
         this.evalTask.score = this.evalScore;
+        if (this.evalResult === 'authorized_delay' && this.evalNewDueDate) {
+          this.evalTask.authorizedDueDate = this.evalNewDueDate;
+        }
         const resultLabel = { completed:'已完成', incomplete:'未完成', authorized_delay:'获权延期' }[this.evalResult] || this.evalResult;
+        const delayInfo = this.evalResult === 'authorized_delay' && this.evalNewDueDate ? '，延期至 ' + this.evalNewDueDate : '';
         toast('✅ 已评估：' + this.evalTask.title);
-        store.notifications.unshift({ id: Date.now(), forRole: 'EMPLOYEE', type: 'eval_done', title: '任务评估完成', desc: '「' + this.evalTask.title + '」已完成评估，得分' + this.evalScore + '分，结果：' + resultLabel, time: '刚刚', unread: true, icon: '⭐', iconBg: 'var(--violet-soft)', link: '/plans/' + this.plan.id });
+        store.notifications.unshift({ id: Date.now(), forRole: 'EMPLOYEE', type: 'eval_done', title: '任务评估完成', desc: '「' + this.evalTask.title + '」评估结果：' + resultLabel + delayInfo, time: '刚刚', unread: true, icon: '⭐', iconBg: 'var(--violet-soft)', link: '/plans/' + this.plan.id });
       }
       this.showEvalModal = false;
     },
@@ -2082,10 +2099,18 @@ const ExecutionPage = {
         </div>
       </div>
 
-      <!-- All done banner -->
-      <div v-if="allTasksDone && totalCount > 0" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <!-- All done banner: waiting for evaluation -->
+      <div v-if="allTasksDone && !allTasksEvaluated && totalCount > 0" style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div>
-          <div style="font-size:14px;font-weight:700;color:#16a34a;">本周任务已全部完成</div>
+          <div style="font-size:14px;font-weight:700;color:#d97706;">⭐ 本周任务已全部完成</div>
+          <div style="font-size:12px;color:#92400e;margin-top:3px;">等待主管对任务进行结果评估。</div>
+        </div>
+        <span style="background:#fef3c7;color:#d97706;font-size:12px;padding:6px 12px;border-radius:20px;white-space:nowrap;font-weight:600;">待评估</span>
+      </div>
+      <!-- All done banner: evaluation complete, go to review -->
+      <div v-if="allTasksEvaluated && totalCount > 0" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#16a34a;">✅ 本周任务已完成评估</div>
           <div style="font-size:12px;color:#22c55e;margin-top:3px;">下一步前往复盘页生成本周沉淀。</div>
         </div>
         <button class="btn btn-primary" style="border-radius:22px;padding:8px 18px;white-space:nowrap;" @click="$router.push('/review')">前往复盘</button>
@@ -2215,6 +2240,13 @@ const ExecutionPage = {
     progressCount() { return this.allTasks.filter(t => t.status === 'progress').length; },
     doneCount() { return this.allTasks.filter(t => t.status === 'done').length; },
     allTasksDone() { return this.totalCount > 0 && this.doneCount === this.totalCount; },
+    allTasksEvaluated() {
+      if (!this.allTasksDone) return false;
+      const myPlans = store.plans.filter(p => p.userId === currentUser().id && p.status === 'approved');
+      if (!myPlans.length) return false;
+      const doneTasks = myPlans.flatMap(p => p.tasks).filter(t => t.status === 'done');
+      return doneTasks.length > 0 && doneTasks.every(t => t.reviewResult);
+    },
     pendingEvalCount() {
       const plans = store.plans.filter(p => p.status === 'approved' && p.userId !== currentUser().id);
       let count = 0;
