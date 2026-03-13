@@ -1308,21 +1308,80 @@ const PlanDetailPage = {
         <div style="font-size:12px;color:var(--text-3);margin-top:6px;">请修改后重新提交</div>
       </div>
 
-      <!-- HR collab acceptance banner -->
+      <!-- 计划流转记录 -->
+      <div v-if="plan.status !== 'draft'" style="background:white;border-radius:12px;border:1px solid var(--border);padding:14px;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:10px;">📋 流转记录</div>
+        <div style="display:flex;flex-direction:column;gap:0;">
+          <div style="display:flex;align-items:flex-start;gap:10px;padding-bottom:10px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">📤</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;">{{ plan.userName }} 提交了周计划</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px;">{{ plan.submittedAt || '03-12 09:30' }}</div>
+            </div>
+          </div>
+          <div v-if="plan.status === 'returned'" style="display:flex;align-items:flex-start;gap:10px;padding-bottom:10px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">↩️</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;">主管退回修改</div>
+              <div v-if="plan.returnComment" style="font-size:12px;color:#dc2626;margin-top:3px;padding:6px 8px;background:#fef2f2;border-radius:6px;">{{ plan.returnComment }}</div>
+            </div>
+          </div>
+          <div v-if="plan.status === 'approved' || plan.status === 'reviewed'" style="display:flex;align-items:flex-start;gap:10px;padding-bottom:10px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--success-soft);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">✅</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;">{{ plan.approvedBy || '主管' }} 审批通过</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px;">计划进入执行阶段</div>
+            </div>
+          </div>
+          <div v-if="plan.status === 'reviewed'" style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">📊</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;">复盘评价已完成</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px;">本周计划已归档</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HR collab acceptance banner: step 1 - pending acceptance -->
       <div v-if="isHRViewing && pendingCollabTask" style="background:#f0f9ff;border:1.5px solid #7dd3fc;border-radius:14px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:14px;font-weight:700;color:#0369a1;margin-bottom:10px;">✈ 待接收协办任务</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:700;color:#0369a1;">✈ 待接收协办任务</div>
+          <span style="background:#fee2e2;color:#dc2626;font-size:11px;padding:2px 8px;border-radius:20px;">待接收</span>
+        </div>
         <div style="background:white;border-radius:10px;padding:12px;margin-bottom:12px;">
           <div style="font-size:14px;font-weight:600;">{{ pendingCollabTask.title }}</div>
           <div style="font-size:12px;color:var(--text-3);margin-top:3px;">{{ pendingCollabTask.project || '未关联项目' }} · 截止 {{ pendingCollabTask.dueDate }}</div>
-          <div v-if="pendingCollabTask.collabNote" style="font-size:12px;color:var(--text-2);margin-top:8px;padding:8px;background:#f8f9fa;border-radius:8px;line-height:1.5;">协办说明：{{ pendingCollabTask.collabNote }}</div>
+          <div v-if="pendingCollabTask.collabNote" style="font-size:12px;color:var(--text-2);margin-top:8px;padding:8px;background:#f0f9ff;border-radius:8px;line-height:1.5;">📋 协办需求：{{ pendingCollabTask.collabNote }}</div>
         </div>
-        <button class="btn btn-primary btn-block" style="border-radius:12px;" @click="acceptCollab(pendingCollabTask)">接收协办并填写回执</button>
+        <button class="btn btn-primary btn-block" style="border-radius:12px;" @click="acceptCollab(pendingCollabTask)">接收协办并指派经办人 →</button>
       </div>
 
-      <!-- Collab accepted banner -->
+      <!-- HR collab banner: step 2 - accepted, handler assigned, ready to submit receipt -->
+      <div v-if="isHRViewing && acceptedCollabTask" style="background:#f0f9ff;border:1.5px solid #93c5fd;border-radius:14px;padding:14px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:700;color:#1d4ed8;">✈ 协办进行中</div>
+          <span style="background:#dbeafe;color:#1d4ed8;font-size:11px;padding:2px 8px;border-radius:20px;">已指派经办人</span>
+        </div>
+        <div style="background:white;border-radius:10px;padding:12px;margin-bottom:12px;">
+          <div style="font-size:14px;font-weight:600;">{{ acceptedCollabTask.title }}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:3px;">截止 {{ acceptedCollabTask.dueDate }}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;background:#eff6ff;border-radius:8px;">
+            <span style="font-size:12px;color:#1d4ed8;font-weight:600;">👤 经办人</span>
+            <span style="font-size:13px;font-weight:700;color:#1e40af;">{{ acceptedCollabTask.collabHandler }}</span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block" style="border-radius:12px;" @click="openCollabReceipt(acceptedCollabTask)">提交协办回执</button>
+      </div>
+
+      <!-- HR collab banner: step 3 - receipt submitted -->
       <div v-if="isHRViewing && completedCollabTask" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:14px;font-weight:700;color:#16a34a;margin-bottom:4px;">✅ 协办回执已提交</div>
-        <div style="font-size:13px;color:var(--text-2);">{{ completedCollabTask.collabReceipt }}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:14px;font-weight:700;color:#16a34a;">✅ 协办回执已提交</div>
+          <span style="background:#dcfce7;color:#16a34a;font-size:11px;padding:2px 8px;border-radius:20px;">已完成</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">经办人：{{ completedCollabTask.collabHandler }}</div>
+        <div style="font-size:13px;color:var(--text-2);padding:10px;background:white;border-radius:8px;line-height:1.6;">{{ completedCollabTask.collabReceipt }}</div>
       </div>
 
       <!-- 审批意见 card (shown to manager/reviewer when plan is approved) -->
@@ -1454,12 +1513,20 @@ const PlanDetailPage = {
         <!-- Task Action Buttons: EVALUATE phase (evaluate / already-evaluated / collab status) -->
         <template v-if="canEvaluate">
           <!-- Collab status badges -->
-          <div v-if="t.collabStatus === 'receipt_submitted'" style="margin-top:6px;display:flex;gap:6px;align-items:center;">
-            <span style="background:#dcfce7;color:#16a34a;font-size:12px;padding:4px 12px;border-radius:8px;font-weight:600;">✅ 协办已完成</span>
-            <button v-if="t.status === 'done' && !t.reviewResult" style="padding:6px 14px;border:1.5px solid #ede9fe;background:#f5f3ff;color:#7c3aed;border-radius:8px;font-size:12px;cursor:pointer;" @click.stop="openEval(t)">★ 结果评估</button>
+          <div v-if="t.collabStatus === 'receipt_submitted'" style="margin-top:6px;">
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+              <span style="background:#dcfce7;color:#16a34a;font-size:12px;padding:4px 12px;border-radius:8px;font-weight:600;">✅ 协办已完成</span>
+              <span v-if="t.collabHandler" style="font-size:12px;color:var(--text-3);">经办人：{{ t.collabHandler }}</span>
+              <button v-if="t.status === 'done' && !t.reviewResult" style="margin-left:auto;padding:6px 14px;border:1.5px solid #ede9fe;background:#f5f3ff;color:#7c3aed;border-radius:8px;font-size:12px;cursor:pointer;" @click.stop="openEval(t)">★ 结果评估</button>
+            </div>
+            <div v-if="t.collabReceipt" style="font-size:12px;color:var(--text-2);padding:8px 10px;background:#f0fdf4;border-radius:8px;line-height:1.5;">回执：{{ t.collabReceipt }}</div>
+          </div>
+          <div v-else-if="t.collabStatus === 'accepted'" style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="background:#dbeafe;color:#1d4ed8;font-size:12px;padding:4px 12px;border-radius:8px;font-weight:600;">✈ 协办已接收</span>
+            <span v-if="t.collabHandler" style="font-size:12px;color:var(--text-3);">经办人：{{ t.collabHandler }}</span>
           </div>
           <div v-else-if="t.collabStatus === 'pending_hr'" style="margin-top:6px;">
-            <span style="background:#e0f2fe;color:#0369a1;font-size:12px;padding:4px 12px;border-radius:8px;font-weight:600;">✈ 协办进行中</span>
+            <span style="background:#fef3c7;color:#d97706;font-size:12px;padding:4px 12px;border-radius:8px;font-weight:600;">⏳ 待接收协办</span>
           </div>
           <!-- Evaluated badge -->
           <div v-else-if="t.reviewResult" style="margin-top:6px;">
@@ -1617,6 +1684,38 @@ const PlanDetailPage = {
         </div>
       </div>
 
+      <!-- 指派经办人 Modal (HR accepts and assigns handler) -->
+      <div v-if="showAssignHandlerModal && collabTask" class="modal-overlay" @click.self="showAssignHandlerModal = false">
+        <div class="modal-content" style="border-radius:20px;padding:0;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);">
+            <span style="font-size:16px;font-weight:700;">接收协办并指派经办人</span>
+            <button style="background:none;border:none;font-size:20px;color:var(--text-3);cursor:pointer;line-height:1;" @click="showAssignHandlerModal = false">✕</button>
+          </div>
+          <div style="padding:16px 20px;">
+            <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:16px;">
+              <div style="font-size:12px;color:var(--text-3);margin-bottom:4px;">协办任务</div>
+              <div style="font-size:14px;font-weight:600;">{{ collabTask.title }}</div>
+              <div v-if="collabTask.collabNote" style="font-size:12px;color:var(--text-2);margin-top:8px;padding:8px;background:#f0f9ff;border-radius:8px;line-height:1.5;">📋 {{ collabTask.collabNote }}</div>
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="font-size:13px;color:var(--text-3);margin-bottom:6px;">指派经办人</div>
+              <select v-model="collabHandlerName" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:white;box-sizing:border-box;">
+                <option value="李明（行政专员）">李明（行政专员）</option>
+                <option value="王芳（HR专员）">王芳（HR专员）</option>
+                <option value="张晓（对接专员）">张晓（对接专员）</option>
+              </select>
+            </div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px;margin-bottom:16px;">
+              <div style="font-size:12px;color:#92400e;line-height:1.5;">📢 确认后主管将收到通知：<br>「行政人事中心已接收协办，经办人：{{ collabHandlerName }}」</div>
+            </div>
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-outline" style="flex:1;padding:12px;border-radius:12px;" @click="showAssignHandlerModal = false">取消</button>
+              <button class="btn btn-primary" style="flex:1;padding:12px;border-radius:12px;" @click="assignCollabHandler">✅ 确认接收并指派</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Collab Receipt Modal (HR submits receipt) -->
       <div v-if="showCollabReceiptModal" class="modal-overlay" @click.self="showCollabReceiptModal = false">
         <div class="modal-content">
@@ -1668,7 +1767,7 @@ const PlanDetailPage = {
       </div>
     </div>
   `,
-  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalComment: '本周任务完成质量较好，按时交付，后续继续保持。', comment: '任务描述过于笼统，请具体说明各任务的可交付物，并补充完成标准', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, expandedAuxId: null, showCollabModal: false, collabTask: null, collabDept: 4, collabNote: '需要行政人事中心配合，协助联系外部访谈对象并提供客户联系名单，预计需要2个工作日完成对接工作', showCollabReceiptModal: false, collabReceiptNote: '行政人事中心将全力配合，已安排专员联系相关客户，预计3月15日前完成名单对接并提供详细清单。', newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '吴文建', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
+  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalComment: '本周任务完成质量较好，按时交付，后续继续保持。', comment: '任务描述过于笼统，请具体说明各任务的可交付物，并补充完成标准', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, expandedAuxId: null, showCollabModal: false, collabTask: null, collabDept: 4, collabNote: '需要行政人事中心配合，协助联系外部访谈对象并提供客户联系名单，预计需要2个工作日完成对接工作', showCollabReceiptModal: false, showAssignHandlerModal: false, collabHandlerName: '李明（行政专员）', collabReceiptNote: '行政人事中心将全力配合，已安排专员联系相关客户，预计3月15日前完成名单对接并提供详细清单。', newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '吴文建', editingTaskId: null, editTitle: '', editDue: '', editPriority: '' }; },
   computed: {
     plan() { return store.plans.find(p => p.id === parseInt(this.$route.params.id)); },
     isManagerViewing() { return store.currentRole === 'MANAGER' || store.currentRole === 'BOSS'; },
@@ -1758,6 +1857,10 @@ const PlanDetailPage = {
     completedCollabTask() {
       if (!this.plan) return null;
       return this.plan.tasks.find(t => t.collabStatus === 'receipt_submitted') || null;
+    },
+    acceptedCollabTask() {
+      if (!this.plan) return null;
+      return this.plan.tasks.find(t => t.collabStatus === 'accepted') || null;
     },
     collabDeptManager() {
       if (!this.collabDept) return '';
@@ -1887,17 +1990,34 @@ const PlanDetailPage = {
       store.auditLogs.unshift({ id: Date.now(), type: 'review', content: currentUser().name + ' 完成了 ' + this.plan.userName + ' ' + this.plan.weekCode + ' 的复盘评价', time: '03-12 ' + new Date().toTimeString().slice(0,5) });
     },
     acceptCollab(t) {
+      this.collabTask = t;
+      this.collabHandlerName = '李明（行政专员）';
+      this.showAssignHandlerModal = true;
+    },
+    assignCollabHandler() {
+      const t = this.collabTask;
+      if (t) {
+        t.collabStatus = 'accepted';
+        t.collabHandler = this.collabHandlerName;
+        store.notifications.unshift({ id: Date.now(), forRole: 'MANAGER', type: 'collab_accepted', title: '协办已接收，经办人已指派', desc: '行政人事中心已接收协办：「' + t.title + '」，经办人：' + this.collabHandlerName + '，将尽快推进', time: '刚刚', unread: true, icon: '✈', iconBg: '#eff6ff', link: this.$route.fullPath });
+        toast('✅ 已接收协办并指派经办人：' + this.collabHandlerName);
+      }
+      this.showAssignHandlerModal = false;
+    },
+    openCollabReceipt(t) {
+      this.collabTask = t;
       this.showCollabReceiptModal = true;
     },
     submitCollabReceipt() {
-      const t = this.pendingCollabTask;
+      const t = this.collabTask || this.acceptedCollabTask;
       if (t) {
         t.collabStatus = 'receipt_submitted';
         t.collabReceipt = this.collabReceiptNote;
+        const handlerInfo = t.collabHandler ? '（经办人：' + t.collabHandler + '）' : '';
+        store.notifications.unshift({ id: Date.now(), forRole: 'MANAGER', type: 'collab_receipt', title: '协办回执已提交', desc: '行政人事中心已完成协办工作' + handlerInfo + '，请查看回执', time: '刚刚', unread: true, icon: '✅', iconBg: 'var(--success-soft)', link: this.$route.fullPath });
+        toast('✅ 协办回执已提交，已通知主管');
       }
-      store.notifications.unshift({ id: Date.now(), forRole: 'MANAGER', type: 'collab_receipt', title: '协办回执已提交', desc: '行政人事中心已完成协办工作，请查看回执内容', time: '刚刚', unread: true, icon: '✅', iconBg: 'var(--success-soft)', link: this.$route.fullPath });
       this.showCollabReceiptModal = false;
-      toast('✅ 协办回执已提交，已通知主管');
     }
   }
 };
