@@ -283,6 +283,7 @@ const store = reactive({
   currentRole: null, // EMPLOYEE, MANAGER, HR, ADMIN, BOSS
   workspace: 'personal', // personal | organization
   weekOffset: 0,
+  viewingMember: null, // { name, dept } — when manager views a member's review
   toastMsg: '',
   toastTimer: null,
   showRoleDrawer: false,
@@ -2332,10 +2333,26 @@ const ReviewPage = {
   }; },
   template: `
     <div class="page">
+      <!-- Member viewing banner -->
+      <div v-if="store.viewingMember" style="display:flex;align-items:center;gap:10px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:#1d4ed8;">正在查看 {{ store.viewingMember.name }} 的复盘</div>
+          <div style="font-size:12px;color:#3b82f6;margin-top:2px;">{{ store.viewingMember.dept }}</div>
+        </div>
+        <button style="padding:6px 14px;background:white;border:1px solid #bfdbfe;border-radius:8px;font-size:12px;color:var(--primary);cursor:pointer;" @click="backToTeam()">← 返回团队</button>
+      </div>
+
       <!-- Header -->
-      <div style="margin-bottom:14px;">
-        <div style="font-size:22px;font-weight:700;line-height:1.2;">复盘中心</div>
-        <div style="font-size:12px;color:var(--text-3);margin-top:3px;">围绕任务结果、项目推进和工作动态沉淀{{ periodSubtitle }}复盘。</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+        <div>
+          <div style="font-size:22px;font-weight:700;line-height:1.2;">{{ store.viewingMember ? store.viewingMember.name + '的复盘' : '复盘中心' }}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:3px;">围绕任务结果、项目推进和工作动态沉淀{{ periodSubtitle }}复盘。</div>
+        </div>
+        <button v-if="!store.viewingMember && (store.currentRole === 'MANAGER' || store.currentRole === 'BOSS')"
+          style="display:flex;align-items:center;gap:5px;padding:7px 12px;border:1px solid rgba(59,130,246,0.2);background:rgba(59,130,246,0.05);color:var(--primary);border-radius:10px;font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0;"
+          @click="$router.push('/review/team')">
+          👥 团队复盘
+        </button>
       </div>
 
       <!-- Period Tabs (pill style) -->
@@ -2862,9 +2879,185 @@ const ReviewPage = {
       else if (this.period === 'month') { const m = parseInt(this.selectedMonth); this.selectedMonth = String(m < 12 ? m+1 : 1).padStart(2,'0'); }
       else if (this.period === 'quarter') { const qs=['Q1','Q2','Q3','Q4']; const i=qs.indexOf(this.selectedQuarter); this.selectedQuarter = qs[i<3?i+1:0]; }
       else { this.selectedYear = String(Number(this.selectedYear)+1); }
+    },
+    backToTeam() {
+      store.viewingMember = null;
+      this.$router.push('/review/team');
     }
+  },
+  beforeUnmount() {
+    // Clear viewing member when navigating away from review (but not to review/team)
   }
 }
+// Team Review Page
+const TeamReviewPage = {
+  data() { return {
+    period: 'week',
+  }; },
+  template: `
+    <div class="page">
+      <!-- Header with back -->
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;">
+        <button style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;margin:-2px 0 0 -4px;" @click="$router.push('/review')">‹</button>
+        <div>
+          <div style="font-size:20px;font-weight:700;">团队复盘</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px;">查看团队成员的任务完成和复盘情况</div>
+        </div>
+      </div>
+
+      <!-- Period tabs -->
+      <div style="display:flex;background:#f0f0f5;border-radius:12px;padding:3px;margin-bottom:16px;gap:2px;">
+        <button v-for="p in periods" :key="p.value"
+          :style="period === p.value ? 'background:white;color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.1);' : 'background:transparent;color:var(--text-3);'"
+          style="flex:1;border:none;padding:8px 4px;border-radius:10px;font-size:13px;cursor:pointer;transition:all 0.15s;"
+          @click="period = p.value">{{ p.label }}</button>
+      </div>
+
+      <!-- Period navigator -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;margin-bottom:14px;">
+        <button style="background:none;border:none;font-size:18px;color:var(--text-2);cursor:pointer;padding:8px 12px;">‹</button>
+        <div style="text-align:center;">
+          <div style="font-size:16px;font-weight:700;">{{ periodTitle }}</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:1px;">{{ periodRange }}</div>
+        </div>
+        <button style="background:none;border:none;font-size:18px;color:var(--text-2);cursor:pointer;padding:8px 12px;">›</button>
+      </div>
+
+      <!-- Team Summary -->
+      <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+          <span style="font-size:16px;">👥</span>
+          <span style="font-size:15px;font-weight:700;">团队总览</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-3);">2026-W11</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px;">
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 8px;">
+            <div style="font-size:10px;color:#3b82f680;">团队完成率</div>
+            <div style="font-size:18px;font-weight:800;color:#2563eb;margin-top:4px;">88%</div>
+          </div>
+          <div style="background:#f8f9fa;border:1px solid var(--border);border-radius:10px;padding:10px 8px;">
+            <div style="font-size:10px;color:var(--text-3);">成员数</div>
+            <div style="font-size:18px;font-weight:800;margin-top:4px;">3<span style="font-size:11px;font-weight:400;color:var(--text-3);">/4</span></div>
+          </div>
+          <div style="background:#f8f9fa;border:1px solid var(--border);border-radius:10px;padding:10px 8px;">
+            <div style="font-size:10px;color:var(--text-3);">已生成复盘</div>
+            <div style="font-size:18px;font-weight:800;margin-top:4px;">2<span style="font-size:11px;font-weight:400;color:var(--text-3);">/4</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 8px;">
+            <div style="font-size:10px;color:#16a34a80;">已完成</div>
+            <div style="font-size:18px;font-weight:800;color:#16a34a;margin-top:4px;">8</div>
+          </div>
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 8px;">
+            <div style="font-size:10px;color:#d9770680;">进行中</div>
+            <div style="font-size:18px;font-weight:800;color:#d97706;margin-top:4px;">2</div>
+          </div>
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 8px;">
+            <div style="font-size:10px;color:#dc262680;">待开始</div>
+            <div style="font-size:18px;font-weight:800;color:#dc2626;margin-top:4px;">1</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Member Cards -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:600;">成员{{ periodLabel }}详情</div>
+        <div style="font-size:12px;color:var(--text-3);">4 人</div>
+      </div>
+
+      <div v-for="m in members" :key="m.name" @click="viewMember(m)"
+        :style="{ background: m.bg, border: '1.5px solid ' + m.borderColor, borderRadius: '14px', padding: '16px', marginBottom: '10px', cursor: 'pointer', transition: 'transform 0.1s' }">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:14px;font-weight:600;">{{ m.name }}</span>
+              <span :style="{ width:'8px', height:'8px', borderRadius:'50%', background: m.dotColor, display:'inline-block' }"></span>
+              <span :style="{ fontSize:'11px', color: m.labelColor }">{{ m.outcomeLabel }}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px;">{{ m.dept }}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:20px;font-weight:800;">{{ m.rate }}</div>
+            <div style="font-size:11px;color:var(--text-3);">完成率</div>
+          </div>
+        </div>
+        <div v-if="m.totalTasks > 0" style="margin-top:10px;">
+          <div style="height:6px;border-radius:4px;background:rgba(255,255,255,0.6);overflow:hidden;">
+            <div :style="{ width: m.rate, height: '100%', borderRadius: '4px', background: '#22c55e' }"></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:8px;font-size:12px;color:var(--text-3);">
+            <span>✅ {{ m.done }} 完成</span>
+            <span>🕐 {{ m.progress }} 进行中</span>
+            <span>⏳ {{ m.todo }} 待开始</span>
+            <span v-if="m.logs > 0">📄 {{ m.logs }} 动态</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;">
+            <span style="color:var(--text-3);">高优任务 {{ m.highDone }}/{{ m.highTotal }}</span>
+            <span :style="{ color: m.reportReady ? '#16a34a' : 'var(--text-3)' }">{{ m.reportReady ? '已生成复盘' : '未生成复盘' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Team Insights -->
+      <div style="background:linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%);border:1.5px solid #b8d9f5;border-radius:16px;padding:16px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:20px;">🤖</span>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:700;">AI 团队行动建议</div>
+            <div style="font-size:11px;color:var(--text-3);">基于团队本周复盘的管理行动建议</div>
+          </div>
+          <button style="font-size:11px;padding:4px 10px;border:1px solid #b8d9f5;border-radius:8px;background:white;cursor:pointer;color:var(--primary);" @click="toast('建议已重新生成')">↺ 重新生成</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+          <div style="min-width:20px;height:20px;border-radius:50%;background:var(--primary);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
+          <div><div style="font-size:13px;font-weight:600;">关注张伟的未完成任务</div><div style="font-size:12px;color:var(--text-3);margin-top:2px;">张伟本周有1项高优任务未完成，建议下周一优先跟进，了解阻塞原因</div></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+          <div style="min-width:20px;height:20px;border-radius:50%;background:var(--primary);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">2</div>
+          <div><div style="font-size:13px;font-weight:600;">督促黄小明提交复盘</div><div style="font-size:12px;color:var(--text-3);margin-top:2px;">黄小明本周任务已完成但尚未生成复盘，建议提醒其完成闭环</div></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="min-width:20px;height:20px;border-radius:50%;background:var(--primary);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">3</div>
+          <div><div style="font-size:13px;font-weight:600;">团队周会同步复盘要点</div><div style="font-size:12px;color:var(--text-3);margin-top:2px;">建议在周一例会上同步本周复盘结论，明确下周高优事项和资源分配</div></div>
+        </div>
+      </div>
+    </div>
+  `,
+  computed: {
+    periods() { return [{ value:'week', label:'周复盘' }, { value:'month', label:'月复盘' }, { value:'quarter', label:'季度复盘' }, { value:'year', label:'年度复盘' }]; },
+    periodTitle() {
+      if (this.period === 'week') return '2026-W11';
+      if (this.period === 'month') return '2026年03月';
+      if (this.period === 'quarter') return '2026年Q1';
+      return '2026年';
+    },
+    periodRange() {
+      if (this.period === 'week') return '03/09 - 03/15';
+      if (this.period === 'month') return '03/01 - 03/31';
+      if (this.period === 'quarter') return '01/01 - 03/31';
+      return '01/01 - 12/31';
+    },
+    periodLabel() {
+      return { week:'周复盘', month:'月复盘', quarter:'季度复盘', year:'年度复盘' }[this.period] || '周复盘';
+    },
+    members() {
+      return [
+        { name:'张伟', dept:'软件部', rate:'67%', totalTasks:3, done:2, progress:1, todo:0, logs:4, highDone:1, highTotal:2, reportReady:true, outcomeLabel:'有未完成', bg:'#fef2f2', borderColor:'#fecaca', dotColor:'#ef4444', labelColor:'#dc2626' },
+        { name:'李娜', dept:'软件部', rate:'100%', totalTasks:3, done:3, progress:0, todo:0, logs:3, highDone:1, highTotal:1, reportReady:true, outcomeLabel:'全部完成', bg:'#f0fdf4', borderColor:'#bbf7d0', dotColor:'#22c55e', labelColor:'#16a34a' },
+        { name:'黄小明', dept:'硬件部', rate:'100%', totalTasks:3, done:3, progress:0, todo:0, logs:2, highDone:2, highTotal:2, reportReady:false, outcomeLabel:'全部完成', bg:'#f0fdf4', borderColor:'#bbf7d0', dotColor:'#22c55e', labelColor:'#16a34a' },
+        { name:'赵丽', dept:'软件部', rate:'-', totalTasks:0, done:0, progress:0, todo:0, logs:0, highDone:0, highTotal:0, reportReady:false, outcomeLabel:'暂无计划', bg:'#f8f9fa', borderColor:'#e5e7eb', dotColor:'#d1d5db', labelColor:'#6b7280' },
+      ];
+    },
+  },
+  methods: {
+    viewMember(m) {
+      store.viewingMember = { name: m.name, dept: m.dept };
+      this.$router.push('/review');
+    },
+  },
+};
+
 // Notifications Page
 const NotificationsPage = {
   template: `
@@ -3921,6 +4114,7 @@ const routes = [
   { path: '/team', component: TeamPlansPage },
   { path: '/execution', component: ExecutionPage },
   { path: '/review', component: ReviewPage },
+  { path: '/review/team', component: TeamReviewPage },
   { path: '/notifications', component: NotificationsPage },
   { path: '/boss/dashboard', component: BossDashboard },
   { path: '/boss/plans', component: BossPlans },
@@ -3964,6 +4158,7 @@ const App = {
         '/team': '团队计划',
         '/execution': '今日执行',
         '/review': '周复盘',
+        '/review/team': '团队复盘',
         '/notifications': '通知中心',
         '/boss/dashboard': '分析看板',
         '/boss/plans': '全员计划',
