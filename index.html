@@ -294,7 +294,7 @@ const store = reactive({
     { id: 2, name: '李娜',  role: 'EMPLOYEE', dept: '软件部',    deptId: 11, managerId: 3, email: 'lina@company.com',       phone: '139****5678', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_002', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-12 06:00' },
     { id: 3, name: '吴文建', role: 'MANAGER', dept: '技术事业部', deptId: 1,  managerId: 5, email: 'wuwenjian@company.com',  phone: '137****9012', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_003', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-12 06:00' },
     { id: 4, name: '张曼丽', role: 'HR',      dept: '行政人事中心', deptId: 4, managerId: 5, email: 'zhangmanli@company.com', phone: '136****3456', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_004', employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-12 06:00' },
-    { id: 5, name: '陈总',  role: 'BOSS',    dept: '总经办',     deptId: null, managerId: null, email: 'chenzong@company.com', phone: '135****7890', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_005', employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'manual', lastSyncedAt: '2026-03-12 06:00' },
+    { id: 5, name: '王总',  role: 'BOSS',    dept: '总经办',     deptId: null, managerId: null, email: 'wangzong@company.com', phone: '135****7890', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_005', employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'manual', lastSyncedAt: '2026-03-12 06:00' },
     { id: 6, name: '刘管理', role: 'ADMIN',   dept: '系统管理',   deptId: null, managerId: 5, email: 'liuadmin@company.com',  phone: '133****2345', isActive: true,  identitySource: 'local',    dingtalkUserId: null,     employmentStatus: 'active', reviewerSyncMode: 'manual', seniorReviewerSyncMode: 'manual', lastSyncedAt: null },
     { id: 7, name: '黄小明', role: 'EMPLOYEE', dept: '硬件部',   deptId: 12, managerId: 3, email: 'huangxm@company.com',   phone: '138****5521', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_007', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-11 14:30' },
     { id: 8, name: '吴传庆', role: 'MANAGER', dept: '商务中心',  deptId: 5,  managerId: 5, email: 'wuchuanqing@company.com', phone: '139****8832', isActive: true,  identitySource: 'dingtalk', dingtalkUserId: 'dt_008', employmentStatus: 'active', reviewerSyncMode: 'auto',   seniorReviewerSyncMode: 'auto',   lastSyncedAt: '2026-03-10 09:15' },
@@ -344,8 +344,8 @@ const store = reactive({
     { id: 83, name: '物流运输部', level: 2, parentId: 8, leader: null, members: 2, planRate: 91, highPriorityQuota: 2, isActive: true },
   ],
   projects: [
-    { id: 1, name: 'WeekSync v2.0', level: 'company', status: 'approved', dept: '技术部', creator: '陈总', code: 'PRJ-001', isActive: true, isArchived: false },
-    { id: 2, name: '春季营销活动', level: 'company', status: 'approved', dept: '市场部', creator: '陈总', code: 'PRJ-002', isActive: true, isArchived: false },
+    { id: 1, name: 'WeekSync v2.0', level: 'company', status: 'approved', dept: '技术部', creator: '王总', code: 'PRJ-001', isActive: true, isArchived: false },
+    { id: 2, name: '春季营销活动', level: 'company', status: 'approved', dept: '市场部', creator: '王总', code: 'PRJ-002', isActive: true, isArchived: false },
     { id: 3, name: '内部培训系统', level: 'department', status: 'approved', dept: '人力资源部', creator: '赵敏', code: '', isActive: true, isArchived: false },
     { id: 4, name: '客户满意度提升', level: 'company', status: 'pending', dept: '运营部', creator: '王强', code: 'PRJ-004', isActive: true, isArchived: false },
   ],
@@ -379,7 +379,7 @@ const store = reactive({
     },
     {
       id: 4, userId: 3, userName: '王强', dept: '产品部', weekCode: '2026-W11',
-      status: 'approved', submittedAt: '03-09 08:00', approvedBy: '陈总',
+      status: 'approved', submittedAt: '03-09 08:00', approvedBy: '王总',
       tasks: [
         { id: 401, title: '团队周计划审核', project: null, priority: 'high', status: 'progress', source: 'original', dueDate: '03-12', difficulty: 5, deliverable: '审核完成', reviewResult: null, score: null },
         { id: 402, title: '产品路线图更新', project: 'WeekSync v2.0', priority: 'medium', status: 'todo', source: 'original', dueDate: '03-14', difficulty: 7, deliverable: '路线图文档', reviewResult: null, score: null },
@@ -414,7 +414,7 @@ const store = reactive({
     { id: 3, type: 'review', content: '王强 完成了 张伟 2026-W10 的复盘评价', time: '03-08 16:00' },
     { id: 4, type: 'submit', content: '李娜 提交了 2026-W11 周计划', time: '03-09 09:30' },
     { id: 5, type: 'submit', content: '王强 提交了 2026-W11 周计划', time: '03-09 08:00' },
-    { id: 6, type: 'approve', content: '陈总 审批通过了 王强 的周计划', time: '03-09 09:00' },
+    { id: 6, type: 'approve', content: '王总 审批通过了 王强 的周计划', time: '03-09 09:00' },
   ],
 });
 
@@ -465,7 +465,7 @@ const roles = [
   { id: 'EMPLOYEE', icon: '👤', name: '员工', desc: '创建周计划、更新任务进度', color: 'var(--primary)', user: '张伟' },
   { id: 'MANAGER', icon: '👨‍💼', name: '主管', desc: '审批计划、评价任务、团队管理', color: 'var(--success)', user: '王强' },
   { id: 'HR', icon: '🏢', name: 'HR', desc: '全员计划查看、合规监控', color: 'var(--violet)', user: '赵敏' },
-  { id: 'BOSS', icon: '👔', name: 'CEO', desc: '组织绩效仪表盘、决策分析', color: 'var(--warning)', user: '陈总' },
+  { id: 'BOSS', icon: '👔', name: 'CEO', desc: '组织绩效仪表盘、决策分析', color: 'var(--warning)', user: '王总' },
   { id: 'ADMIN', icon: '⚙️', name: '管理员', desc: '用户管理、部门设置、系统配置', color: 'var(--danger)', user: '刘管理' },
 ];
 
