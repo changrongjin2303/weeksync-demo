@@ -3105,7 +3105,7 @@ const BossDashboard = {
       <workspace-mode-bar />
       <div style="margin-bottom:14px;">
         <div style="font-size:20px;font-weight:800;">分析看板</div>
-        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ store.selectedWeek }} · 全公司概览</div>
+        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ currentWeek }} · 全公司概览</div>
       </div>
       <week-selector />
 
@@ -3174,7 +3174,7 @@ const BossDashboard = {
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-size:14px;font-weight:600;">{{ d.name }}</div>
-            <div style="font-size:12px;color:var(--text-3);">{{ d.leader }} · {{ d.members }}人 · {{ allTasks.length ? deptTaskCount(d.name) : '-' }}个任务</div>
+            <div style="font-size:12px;color:var(--text-3);">{{ d.leader }} · {{ d.members }}人 · {{ deptTaskCount(d.name) }}个任务</div>
           </div>
           <div style="text-align:right;">
             <div style="font-size:20px;font-weight:700;" :style="{ color: metricColor(deptMetricVal(idx), deptMetric) }">
@@ -3224,30 +3224,27 @@ const BossDashboard = {
     </div>
   `,
   computed: {
-    allTasks() {
-      return store.plans.filter(p => p.weekCode === store.selectedWeek).flatMap(p => p.tasks);
-    },
-    doneCount() { return this.allTasks.filter(t => t.status === 'done').length; },
-    pendingCount() { return this.allTasks.filter(t => t.status !== 'done').length; },
-    completionRate() {
-      if (!this.allTasks.length) return 0;
-      return Math.round(this.doneCount / this.allTasks.length * 100);
-    },
-    extendedCount() { return 2; },
-    projectCount() { return [...new Set(this.allTasks.map(t => t.project).filter(Boolean))].length; },
-    deptCount() { return [...new Set(store.plans.filter(p => p.weekCode === store.selectedWeek).map(p => p.dept))].length || 0; },
-    collabCount() { return this.allTasks.filter(t => t.source === 'collab').length; },
-    dynamicsCount() { return 28; },
+    currentWeek() { return getWeekCode(store.weekOffset); },
+    // Org-wide mock data (95 employees, 8 departments)
+    allTasks() { return { length: 156 }; },
+    doneCount() { return 118; },
+    pendingCount() { return 14; },
+    completionRate() { return 76; },
+    extendedCount() { return 24; },
+    projectCount() { return 12; },
+    deptCount() { return 8; },
+    collabCount() { return 5; },
+    dynamicsCount() { return 342; },
     l1Depts() { return store.departments.filter(d => !d.parentId); },
     lowRateDepts() { return this.l1Depts.filter(d => d.planRate < 80); },
-    totalPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek).length; },
-    reviewedPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek && p.status === 'reviewed').length; },
-    approvedPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek && p.status === 'approved').length; },
-    submittedPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek && p.status === 'submitted').length; },
-    draftPlans() { return store.plans.filter(p => p.weekCode === store.selectedWeek && (p.status === 'draft' || !p.status)).length; },
-    reviewedPct() { return this.totalPlans ? Math.round(this.reviewedPlans / this.totalPlans * 100) : 35; },
-    approvedPct() { return this.totalPlans ? Math.round(this.approvedPlans / this.totalPlans * 100) : 20; },
-    pendingPct() { return this.totalPlans ? Math.round(this.submittedPlans / this.totalPlans * 100) : 25; },
+    totalPlans() { return 82; },
+    reviewedPlans() { return 28; },
+    approvedPlans() { return 18; },
+    submittedPlans() { return 22; },
+    draftPlans() { return 14; },
+    reviewedPct() { return 34; },
+    approvedPct() { return 22; },
+    pendingPct() { return 27; },
     deptMetrics() {
       return [
         { key: 'submission', label: '提交率' },
@@ -3285,9 +3282,9 @@ const BossDashboard = {
       return val >= 90 ? 'var(--success)' : val >= 80 ? 'var(--primary)' : 'var(--danger)';
     },
     deptTaskCount(deptName) {
-      return store.plans
-        .filter(p => p.weekCode === store.selectedWeek && p.dept === deptName)
-        .flatMap(p => p.tasks).length;
+      // Mock task counts per department, proportional to member count
+      const deptCounts = { '技术事业部': 32, 'DGC数字选品中心': 22, '财务中心': 16, '行政人事中心': 18, '商务中心': 26, '客户服务中心': 14, '物流中心': 20, '关务事业部': 8 };
+      return deptCounts[deptName] || Math.round((store.departments.find(d => d.name === deptName)?.members || 5) * 1.6);
     },
   }
 };
@@ -3396,7 +3393,7 @@ const HrDashboard = {
       <workspace-mode-bar />
       <div style="margin-bottom:14px;">
         <div style="font-size:20px;font-weight:800;">合规概览</div>
-        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ store.selectedWeek }} · 全员合规监控</div>
+        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ currentWeek }} · 全员合规监控</div>
       </div>
       <week-selector />
 
@@ -3409,7 +3406,7 @@ const HrDashboard = {
         </div>
         <div style="background:#eafaf1;border:1.5px dashed #52c47a;border-radius:12px;padding:16px;">
           <div style="font-size:12px;color:#52c47a;margin-bottom:6px;">合规提交率</div>
-          <div style="font-size:28px;font-weight:800;color:#27ae60;">78%</div>
+          <div style="font-size:28px;font-weight:800;color:#27ae60;">94%</div>
           <div style="font-size:11px;color:var(--text-3);margin-top:4px;">按时提交计划</div>
         </div>
       </div>
@@ -3424,7 +3421,7 @@ const HrDashboard = {
         </div>
         <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:12px;">
           <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">逾期提交</div>
-          <div style="font-size:22px;font-weight:800;color:var(--warning);">3</div>
+          <div style="font-size:22px;font-weight:800;color:var(--warning);">5</div>
         </div>
       </div>
 
@@ -3451,11 +3448,10 @@ const HrDashboard = {
     </div>
   `,
   computed: {
-    totalUsers() { return store.users.filter(u => u.role !== 'ADMIN').length || 12; },
-    submittedCount() {
-      return store.plans.filter(p => p.weekCode === store.selectedWeek && ['submitted','approved','reviewed'].includes(p.status)).length || 0;
-    },
-    coverageRate() { return this.totalUsers ? Math.round(this.submittedCount / this.totalUsers * 100) : 0; },
+    currentWeek() { return getWeekCode(store.weekOffset); },
+    totalUsers() { return 95; },
+    submittedCount() { return 78; },
+    coverageRate() { return 82; },
     l1Depts() { return store.departments.filter(d => !d.parentId); },
     rankedDepts() { return [...this.l1Depts].sort((a,b) => b.planRate - a.planRate); },
     lowRateDepts() { return this.l1Depts.filter(d => d.planRate < 80); },
@@ -3468,7 +3464,7 @@ const HrAnalytics = {
       <workspace-mode-bar />
       <div style="margin-bottom:14px;">
         <div style="font-size:20px;font-weight:800;">人员分析</div>
-        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ store.selectedWeek }} · 全员行为洞察</div>
+        <div style="color:var(--text-3);font-size:13px;margin-top:2px;">{{ currentWeek }} · 全员行为洞察</div>
       </div>
       <week-selector />
 
@@ -3528,26 +3524,32 @@ const HrAnalytics = {
     </div>
   `,
   computed: {
+    currentWeek() { return getWeekCode(store.weekOffset); },
     unsubmittedUsers() {
-      const week = store.selectedWeek;
-      const submittedIds = store.plans.filter(p => p.weekCode === week && p.status !== 'draft').map(p => p.userId);
-      return (store.users || []).filter(u => u.role !== 'ADMIN' && !submittedIds.includes(u.id)).slice(0, 6);
+      // Mock: show a few realistic unsubmitted users
+      return [
+        { id: 101, name: '王磊', dept: '商务中心', role: 'EMPLOYEE' },
+        { id: 102, name: '赵琳', dept: '物流中心', role: 'EMPLOYEE' },
+        { id: 103, name: '孙鹏', dept: '物流中心', role: 'EMPLOYEE' },
+        { id: 104, name: '周洁', dept: 'DGC数字选品中心', role: 'EMPLOYEE' },
+        { id: 105, name: '钱浩', dept: '客户服务中心', role: 'EMPLOYEE' },
+      ];
     },
     activityData() {
       return [
-        { label: '周一', active: 10 },
-        { label: '周二', active: 8 },
-        { label: '周三', active: 7 },
-        { label: '周四', active: 9 },
-        { label: '周五', active: 6 },
+        { label: '周一', active: 72 },
+        { label: '周二', active: 85 },
+        { label: '周三', active: 68 },
+        { label: '周四', active: 78 },
+        { label: '周五', active: 58 },
       ];
     },
     loadData() {
       return [
-        { label: '1-3个', count: 3, pct: 25, color: 'var(--success)' },
-        { label: '4-6个', count: 7, pct: 58, color: 'var(--primary)' },
-        { label: '7-9个', count: 2, pct: 17, color: 'var(--warning)' },
-        { label: '10+个', count: 0, pct: 0, color: 'var(--danger)' },
+        { label: '1-3个', count: 28, pct: 29, color: 'var(--success)' },
+        { label: '4-6个', count: 45, pct: 47, color: 'var(--primary)' },
+        { label: '7-9个', count: 18, pct: 19, color: 'var(--warning)' },
+        { label: '10+个', count: 4, pct: 5, color: 'var(--danger)' },
       ];
     }
   }
