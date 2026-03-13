@@ -3256,17 +3256,18 @@ const BossDashboard = {
     currentMetricLabel() {
       return (this.deptMetrics.find(m => m.key === this.deptMetric) || {}).label || '';
     },
-    // Mock per-dept rates for each metric dimension
+    // Mock per-dept rates — submission matches store.departments.planRate order
+    // l1Depts order: 技术92, DGC87, 财务95, 行政人事90, 商务83, 客服88, 物流78, 关务91
     mockDeptData() {
       return [
         { submission: 92, completion: 88, delay: 8,  incomplete: 12 },
         { submission: 87, completion: 75, delay: 15, incomplete: 25 },
         { submission: 95, completion: 92, delay: 5,  incomplete: 8  },
         { submission: 90, completion: 85, delay: 10, incomplete: 15 },
-        { submission: 76, completion: 70, delay: 22, incomplete: 30 },
-        { submission: 83, completion: 80, delay: 9,  incomplete: 18 },
-        { submission: 100, completion: 95, delay: 3, incomplete: 5  },
-        { submission: 88, completion: 82, delay: 12, incomplete: 14 },
+        { submission: 83, completion: 70, delay: 22, incomplete: 30 },
+        { submission: 88, completion: 80, delay: 9,  incomplete: 18 },
+        { submission: 78, completion: 68, delay: 18, incomplete: 32 },
+        { submission: 91, completion: 82, delay: 12, incomplete: 14 },
       ];
     },
   },
@@ -3406,8 +3407,8 @@ const HrDashboard = {
         </div>
         <div style="background:#eafaf1;border:1.5px dashed #52c47a;border-radius:12px;padding:16px;">
           <div style="font-size:12px;color:#52c47a;margin-bottom:6px;">合规提交率</div>
-          <div style="font-size:28px;font-weight:800;color:#27ae60;">94%</div>
-          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">按时提交计划</div>
+          <div style="font-size:28px;font-weight:800;color:#27ae60;">{{ onTimeRate }}%</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">{{ submittedCount - overdueCount }} 人按时提交</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
@@ -3421,7 +3422,7 @@ const HrDashboard = {
         </div>
         <div style="background:white;border:1px solid var(--border);border-radius:12px;padding:12px;">
           <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">逾期提交</div>
-          <div style="font-size:22px;font-weight:800;color:var(--warning);">5</div>
+          <div style="font-size:22px;font-weight:800;color:var(--warning);">{{ overdueCount }}</div>
         </div>
       </div>
 
@@ -3449,10 +3450,17 @@ const HrDashboard = {
   `,
   computed: {
     currentWeek() { return getWeekCode(store.weekOffset); },
-    totalUsers() { return 95; },
-    submittedCount() { return 78; },
-    coverageRate() { return 82; },
     l1Depts() { return store.departments.filter(d => !d.parentId); },
+    totalUsers() {
+      return this.l1Depts.reduce((sum, d) => sum + d.members, 0);
+    },
+    submittedCount() {
+      // Derive from each dept's planRate × members
+      return this.l1Depts.reduce((sum, d) => sum + Math.round(d.members * d.planRate / 100), 0);
+    },
+    coverageRate() { return this.totalUsers ? Math.round(this.submittedCount / this.totalUsers * 100) : 0; },
+    overdueCount() { return 5; },
+    onTimeRate() { return this.submittedCount ? Math.round((this.submittedCount - this.overdueCount) / this.submittedCount * 100) : 0; },
     rankedDepts() { return [...this.l1Depts].sort((a,b) => b.planRate - a.planRate); },
     lowRateDepts() { return this.l1Depts.filter(d => d.planRate < 80); },
   }
