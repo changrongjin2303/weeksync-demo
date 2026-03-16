@@ -909,7 +909,6 @@ const TabBar = {
         return [
           { path: '/admin/dashboard', icon: '🖥️', label: '操作台' },
           { path: '/admin/personnel', icon: '👥', label: '人员' },
-          { path: '/admin/projects', icon: '📁', label: '项目台账' },
           { path: '/notifications', icon: '🔔', label: '通知', badge: nb },
         ];
       }
@@ -6052,14 +6051,10 @@ const AdminDashboard = {
       </div>
 
       <!-- 快捷入口 -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
         <button style="padding:16px 6px;background:white;border:1px solid var(--border);border-radius:12px;text-align:center;cursor:pointer;" @click="$router.push('/admin/personnel')">
           <div style="font-size:20px;margin-bottom:4px;">👥</div>
           <div style="font-size:11px;font-weight:500;color:var(--text-2);">人员管理</div>
-        </button>
-        <button style="padding:16px 6px;background:white;border:1px solid var(--border);border-radius:12px;text-align:center;cursor:pointer;" @click="$router.push('/admin/projects')">
-          <div style="font-size:20px;margin-bottom:4px;">📁</div>
-          <div style="font-size:11px;font-weight:500;color:var(--text-2);">项目台账</div>
         </button>
         <button style="padding:16px 6px;background:white;border:1px solid var(--border);border-radius:12px;text-align:center;cursor:pointer;" @click="toast('权限配置功能开发中')">
           <div style="font-size:20px;margin-bottom:4px;">🔐</div>
@@ -6093,7 +6088,6 @@ const AdminDashboard = {
     },
     pendingItems() {
       return [
-        { icon: '📝', title: '待处理注册申请', desc: '2 个新用户等待审批开通', count: 2, urgent: false },
         { icon: '🔄', title: '组织变更待确认', desc: '1 个部门调整需人工确认', count: 1, urgent: false },
         { icon: '⚠️', title: '同步异常待处理', desc: '钉钉侧有 1 条变更未匹配', count: 1, urgent: true },
       ];
@@ -6678,7 +6672,6 @@ const routes = [
   { path: '/hr/analytics', component: HrAnalytics },
   { path: '/admin/dashboard', component: AdminDashboard },
   { path: '/admin/personnel', component: AdminPersonnel },
-  { path: '/admin/projects', component: AdminProjects },
 ];
 
 const router = createRouter({
@@ -6723,7 +6716,6 @@ const App = {
         '/hr/analytics': '人员分析',
         '/admin/dashboard': '系统操作台',
         '/admin/personnel': '人员管理',
-        '/admin/projects': '项目台账',
       };
       if (this.$route.path.startsWith('/plans/')) return '计划详情';
       return map[this.$route.path] || 'WeekSync';
