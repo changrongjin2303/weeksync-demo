@@ -3254,7 +3254,7 @@ const PlanDetailPage = {
 
       <!-- Bottom Buttons: Add Task + AI Import -->
       <div v-if="canAddTask" style="display:flex;gap:10px;margin-top:12px;">
-        <button class="btn btn-outline" style="flex:1;border-radius:12px;font-size:14px;padding:12px;" @click="showAddTaskModal = true">+ 添加任务</button>
+        <button class="btn btn-outline" style="flex:1;border-radius:12px;font-size:14px;padding:12px;" @click="openAddTaskModal">+ 添加任务</button>
         <button class="btn btn-outline" style="flex:1;border-radius:12px;font-size:14px;padding:12px;color:var(--text-3);border-color:var(--border);" @click="toast('AI 智能录入功能即将上线')">🤖 AI录入（即将上线）</button>
       </div>
 
@@ -3810,6 +3810,16 @@ const PlanDetailPage = {
   methods: {
     statusLabel, priorityLabel, sourceLabel, taskStatusLabel,
     priorityStars(priority) { return priority === 'high' ? 5 : priority === 'medium' ? 3 : 1; },
+    openAddTaskModal() {
+      // Auto-fill reviewer based on plan owner's direct manager
+      const ownerId = this.plan ? this.plan.userId : currentUser().id;
+      const owner = store.users.find(u => u.id === ownerId);
+      if (owner && owner.managerId) {
+        const mgr = store.users.find(u => u.id === owner.managerId);
+        if (mgr) this.newTaskReviewer = mgr.name;
+      }
+      this.showAddTaskModal = true;
+    },
     taskActivityLogs(t) {
       const tid = t.taskId || t.id;
       const logs = [];
