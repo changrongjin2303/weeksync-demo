@@ -387,7 +387,7 @@ const store = reactive({
     { id: 302, taskId: 302, planId: 3, assigneeId: 2, projectId: 1, title: '修复登录页面bug', project: 'WeekSync v2.0', priority: 'high', status: 'todo', source: 'original', dueDate: '03-10', difficulty: 4, deliverable: '修复PR', reviewResult: null, score: null, delayHistory: [], createdAt: '2026-03-09 09:30', updatedAt: null },
     { id: 303, taskId: 303, planId: 3, assigneeId: 2, projectId: null, title: '代码评审', project: null, priority: 'low', status: 'todo', source: 'original', dueDate: '03-14', difficulty: 3, deliverable: '评审记录', reviewResult: null, score: null, delayHistory: [], createdAt: '2026-03-09 09:30', updatedAt: null },
     // Plan 4 tasks (吴文建 W11)
-    { id: 401, taskId: 401, planId: 4, assigneeId: 3, projectId: null, title: '团队周计划审核', project: null, priority: 'high', status: 'todo', source: 'original', dueDate: '03-12', difficulty: 5, deliverable: '审核完成', reviewResult: null, score: null, delayHistory: [], createdAt: '2026-03-09 08:00', updatedAt: null },
+    { id: 401, taskId: 401, planId: 4, assigneeId: 3, projectId: null, title: '团队周计划审批', project: null, priority: 'high', status: 'todo', source: 'original', dueDate: '03-12', difficulty: 5, deliverable: '审批完成', reviewResult: null, score: null, delayHistory: [], createdAt: '2026-03-09 08:00', updatedAt: null },
     { id: 402, taskId: 402, planId: 4, assigneeId: 3, projectId: 1, title: '产品路线图更新', project: 'WeekSync v2.0', priority: 'medium', status: 'todo', source: 'original', dueDate: '03-14', difficulty: 7, deliverable: '路线图文档', reviewResult: null, score: null, delayHistory: [], createdAt: '2026-03-09 08:00', updatedAt: null },
     { id: 403, taskId: 403, planId: 4, assigneeId: 3, projectId: 2, title: '跨部门需求对齐会', project: '春季营销活动', priority: 'medium', status: 'todo', source: 'manager', dueDate: '03-11', difficulty: 4, deliverable: '会议纪要', reviewResult: null, score: null, delayHistory: [], createdAt: '2026-03-09 08:00', updatedAt: null },
   ],
@@ -416,7 +416,7 @@ const store = reactive({
   // ===== Plans: P2 #20 去冗余 — userName/dept/approvedBy 改为 id 引用 =====
   plans: [
     // 张伟 W11 — 初始无计划，由用户演示时创建
-    { id: 2, userId: 1, weekCode: '2026-W10', status: 'reviewed', submittedAt: '03-02', approvedById: 3, taskIds: [201, 202, 203] },
+    { id: 2, userId: 1, weekCode: '2026-W10', status: 'reviewed', submittedAt: '03-02', approvedById: 3, approvalComment: '吴文建 2026-W10 已完成可行性确认，进入执行阶段，重点关注本周关键交付与阻塞处理。', taskIds: [201, 202, 203] },
     { id: 3, userId: 2, weekCode: '2026-W11', status: 'draft', submittedAt: null, approvedById: null, taskIds: [301, 302, 303] },
     { id: 4, userId: 3, weekCode: '2026-W11', status: 'draft', submittedAt: null, approvedById: null, taskIds: [401, 402, 403] },
   ],
@@ -548,7 +548,7 @@ function currentUser() {
 }
 
 function statusLabel(s) {
-  return { draft: '草稿', submitted: '待审核', returned: '已退回', approved: '已通过', reviewed: '已复盘' }[s] || s;
+  return { draft: '草稿', submitted: '待审批', returned: '已退回', approved: '已通过', reviewed: '已复盘' }[s] || s;
 }
 function priorityLabel(p) {
   return { high: '高', medium: '中', low: '低' }[p] || p;
@@ -563,7 +563,7 @@ function sourceLabel(s) {
 // ===== P2 #18: 统一状态机 =====
 const PLAN_STATES = {
   draft:     { label: '草稿',   transitions: ['submitted'] },
-  submitted: { label: '待审核', transitions: ['approved', 'returned'] },
+  submitted: { label: '待审批', transitions: ['approved', 'returned'] },
   returned:  { label: '已退回', transitions: ['submitted'] },
   approved:  { label: '已通过', transitions: ['reviewed'] },
   reviewed:  { label: '已复盘', transitions: [] }
@@ -1101,7 +1101,7 @@ const DashboardPage = {
           <button class="btn btn-primary btn-block" style="font-size:15px;font-weight:600;padding:14px;border-radius:12px;" @click="$router.push('/tasks')">
             📝 创建本周计划
           </button>
-          <button class="btn btn-outline btn-block" style="margin-top:8px;font-size:13px;padding:10px;border-radius:12px;" @click="$router.push('/review')">
+          <button class="btn btn-outline btn-block" style="margin-top:8px;font-size:13px;padding:10px;border-radius:12px;" @click="$router.push('/review?week=' + lastWeekCode)">
             查看上周复盘
           </button>
         </div>
@@ -1146,10 +1146,10 @@ const DashboardPage = {
 
         <!-- PDCA主流程路径 -->
         <div style="display:flex;align-items:center;gap:4px;margin-bottom:10px;font-size:11px;color:var(--text-3);justify-content:center;">
-          <span style="color:var(--primary);font-weight:600;">第1步 计划</span><span>→</span>
-          <span>第2步 执行</span><span>→</span>
-          <span>第3步 评估</span><span>→</span>
-          <span>第4步 复盘</span>
+          <span v-for="(step, i) in workflowSteps" :key="'txt'+i">
+            <span :style="{ color: step.active ? 'var(--primary)' : step.done ? 'var(--success)' : 'var(--text-3)', fontWeight: step.active ? '600' : '400' }">第{{ i+1 }}步 {{ step.label }}</span>
+            <span v-if="i < workflowSteps.length - 1"> → </span>
+          </span>
         </div>
         <!-- 5-step flow (保留但精简) -->
         <div style="display:flex;align-items:flex-start;margin-bottom:14px;">
@@ -1216,7 +1216,7 @@ const DashboardPage = {
               <div style="font-size:13px;font-weight:600;">{{ p.userName }} · {{ p.weekCode }}</div>
               <div style="font-size:11px;color:var(--text-3);">{{ p.tasks.length }}个任务 · {{ p.submittedAt }}提交</div>
             </div>
-            <span class="badge badge-submitted">待审核</span>
+            <span class="badge badge-submitted">待审批</span>
           </div>
           <div v-if="pendingInsertTasks.length" style="font-size:12px;font-weight:600;margin-bottom:8px;margin-top:10px;">📝 周中插入任务待审批（{{ pendingInsertTasks.length }}）</div>
           <div v-for="item in pendingInsertTasks" :key="item.task.id"
@@ -1471,6 +1471,7 @@ const DashboardPage = {
       if (h < 18) return '下午好';
       return '晚上好';
     },
+    lastWeekCode() { return getWeekCode(store.weekOffset - 1).split('-')[1]; },
     currentPlan() { return store.plans.find(p => p.userId === this.user.id && p.weekCode === getWeekCode(store.weekOffset)); },
     empTasks() { return this.currentPlan ? this.currentPlan.tasks : []; },
     empCompletionRate() {
@@ -1510,13 +1511,30 @@ const DashboardPage = {
     },
     workflowSteps() {
       const p = this.currentPlan;
-      const step = p ? { draft:1, submitted:2, returned:1, approved:3, reviewed:5 }[p.status] || 1 : 0;
+      if (!p) return [
+        { label: '计划', done: false, active: true },
+        { label: '审批', done: false, active: false },
+        { label: '执行', done: false, active: false },
+        { label: '评估', done: false, active: false },
+        { label: '复盘', done: false, active: false },
+      ];
+      const s = p.status;
+      const allDone = s === 'approved' && p.tasks.length > 0 && p.tasks.every(t => t.status === 'done');
+      const allEvaluated = allDone && p.tasks.every(t => t.reviewResult);
+      let step;
+      if (s === 'draft' || s === 'returned') step = 1;
+      else if (s === 'submitted') step = 2;
+      else if (s === 'approved' && !allDone) step = 3;
+      else if (s === 'approved' && allDone && !allEvaluated) step = 4;
+      else if (s === 'approved' && allEvaluated) step = 4.5;
+      else if (s === 'reviewed') step = 5;
+      else step = 1;
       return [
         { label: '计划', done: step > 1, active: step === 1 },
-        { label: step >= 3 ? '已审批' : '审批', done: step > 2, active: step === 2 },
+        { label: s === 'submitted' ? '待审批' : (step > 2 ? '已审批' : '审批'), done: step > 2, active: step === 2 },
         { label: '执行', done: step > 3, active: step === 3 },
-        { label: step >= 5 ? '已评估' : '评估', done: step > 4, active: step === 4 },
-        { label: '复盘', done: step >= 5, active: false },
+        { label: allDone && !allEvaluated ? '待评估' : (allEvaluated || s === 'reviewed' ? '已评估' : '评估'), done: step > 4, active: step === 4 },
+        { label: '复盘', done: step >= 5, active: step === 5 },
       ];
     },
     todayTodoItems() {
@@ -1761,9 +1779,9 @@ const TaskPage = {
           </div>
 
           <!-- 审批意见 -->
-          <div v-if="currentPlan && currentPlan.status === 'approved' && currentPlan.approvedBy" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px;margin-bottom:12px;">
+          <div v-if="currentPlan && currentPlan.status === 'approved' && currentPlan.approvalComment" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px;margin-bottom:12px;">
             <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:6px;">审批意见</div>
-            <div style="font-size:13px;color:var(--text-2);">{{ currentPlan.approvedBy }} {{ currentPlan.weekCode }} 已完成可行性确认，进入执行阶段，重点关注本周关键交付与阻塞处理。</div>
+            <div style="font-size:13px;color:var(--text-2);">{{ currentPlan.approvalComment }}</div>
           </div>
 
           <!-- 任务列表标题 -->
@@ -2057,7 +2075,7 @@ const TaskPage = {
             </div>
             <div style="text-align:center;padding:10px 4px;background:var(--surface);border-radius:10px;box-shadow:var(--shadow-sm);">
               <div style="font-size:20px;font-weight:700;color:var(--warning);">{{ pendingCount }}</div>
-              <div style="font-size:10px;color:var(--text-3);">待审核</div>
+              <div style="font-size:10px;color:var(--text-3);">待审批</div>
             </div>
             <div style="text-align:center;padding:10px 4px;background:var(--surface);border-radius:10px;box-shadow:var(--shadow-sm);">
               <div style="font-size:20px;font-weight:700;color:var(--primary);">{{ approvedCount }}</div>
@@ -2565,7 +2583,7 @@ const TaskPage = {
     },
     // Plan methods
     goToPlan(m) { if (m.plan) this.$router.push('/plans/' + m.plan.id); else toast(m.name + ' 尚未创建计划'); },
-    quickApprove(plan) { transitionPlan(plan, 'approved'); plan.approvedById = currentUser().id; toast('✅ 已审批通过 ' + plan.userName); },
+    quickApprove(plan) { transitionPlan(plan, 'approved'); plan.approvedById = currentUser().id; plan.approvalComment = currentUser().name + ' 审批通过，请按计划执行。'; toast('✅ 已审批通过 ' + plan.userName); },
     saveQuota() { toast('配额已更新为 ' + this.quota + ' 个'); },
     createProject() {
       store.projects.push({ id: Date.now(), name: this.newProjectName, level: 'department', status: 'pending', dept: currentUser().dept, creator: currentUser().name, code: this.newProjectCode, isActive: true, isArchived: false });
@@ -2583,7 +2601,7 @@ const TaskPage = {
           { title: '用户访谈（3人）', project: '客户满意度提升', priority: 'medium', dueDate: '03-14', difficulty: 6, deliverable: '访谈记录' },
         ],
         MANAGER: [
-          { title: '团队周计划审核', priority: 'high', dueDate: '03-12', difficulty: 5, deliverable: '审核完成' },
+          { title: '团队周计划审批', priority: 'high', dueDate: '03-12', difficulty: 5, deliverable: '审批完成' },
           { title: '产品路线图更新', project: 'WeekSync v2.0', priority: 'medium', dueDate: '03-14', difficulty: 7, deliverable: '路线图文档' },
           { title: '跨部门需求对齐会', project: '春季营销活动', priority: 'medium', dueDate: '03-11', difficulty: 4, deliverable: '会议纪要', source: 'manager' },
         ],
@@ -2595,10 +2613,10 @@ const TaskPage = {
         BOSS: [
           { title: '季度战略目标拆解', priority: 'high', dueDate: '03-12', difficulty: 9, deliverable: '战略文档' },
           { title: '核心团队1on1', priority: 'high', dueDate: '03-13', difficulty: 5, deliverable: '会议记录' },
-          { title: '审核部门预算方案', priority: 'medium', dueDate: '03-14', difficulty: 7, deliverable: '预算批复' },
+          { title: '审批部门预算方案', priority: 'medium', dueDate: '03-14', difficulty: 7, deliverable: '预算批复' },
         ],
         ADMIN: [
-          { title: '系统权限配置审核', project: 'WeekSync v2.0', priority: 'high', dueDate: '03-12', difficulty: 6, deliverable: '配置文档' },
+          { title: '系统权限配置审批', project: 'WeekSync v2.0', priority: 'high', dueDate: '03-12', difficulty: 6, deliverable: '配置文档' },
           { title: '新用户注册审批处理', priority: 'medium', dueDate: '03-13', difficulty: 3, deliverable: '审批完成' },
           { title: '系统日志分析报告', project: 'WeekSync v2.0', priority: 'medium', dueDate: '03-14', difficulty: 5, deliverable: '分析报告' },
         ],
@@ -2997,10 +3015,10 @@ const PlanDetailPage = {
         <div style="font-size:13px;color:var(--text-2);padding:10px;background:white;border-radius:8px;line-height:1.6;">{{ completedCollabTask.collabReceipt }}</div>
       </div>
 
-      <!-- 审批意见 card (shown to manager/reviewer when plan is approved) -->
-      <div v-if="plan.status === 'approved' && plan.approvedBy" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px;margin-bottom:12px;">
+      <!-- 审批意见 card (shown when plan is approved and has comment) -->
+      <div v-if="plan.status === 'approved' && plan.approvalComment" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:14px;margin-bottom:12px;">
         <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:6px;">审批意见</div>
-        <div style="font-size:13px;color:var(--text-2);">{{ plan.approvedBy }} {{ plan.weekCode }} 已完成可行性确认，进入执行阶段，重点关注本周关键交付与阻塞处理。</div>
+        <div style="font-size:13px;color:var(--text-2);">{{ plan.approvalComment }}</div>
       </div>
 
       <!-- Manager approval info banner (canApprove: plan submitted, waiting review) -->
@@ -3242,7 +3260,7 @@ const PlanDetailPage = {
 
       <!-- 审批通过按钮（在添加任务/AI录入下方） -->
       <div v-if="canApprove" style="margin-top:16px;">
-        <button style="width:100%;padding:14px;background:var(--success);color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(22,163,74,0.3);" @click="approvePlan">✅ 审批通过</button>
+        <button style="width:100%;padding:14px;background:var(--success);color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(22,163,74,0.3);" @click="showApproveModal = true">✅ 审批通过</button>
       </div>
 
       <!-- Action Buttons — 底部主操作按状态动态切换 -->
@@ -3527,6 +3545,22 @@ const PlanDetailPage = {
         </div>
       </div>
 
+      <!-- Approve Modal -->
+      <div v-if="showApproveModal" class="modal-overlay" @click.self="showApproveModal = false">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="modal-title">审批通过</div>
+            <button class="modal-close" @click="showApproveModal = false">✕</button>
+          </div>
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:10px;">请输入审批意见，该意见将展示给员工查看。</div>
+          <textarea v-model="approveComment" rows="3" placeholder="请输入审批意见..." style="margin-bottom:12px;"></textarea>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+            <button v-for="s in ['已完成可行性确认，进入执行阶段', '任务安排合理，请按计划推进', '重点关注本周关键交付与阻塞处理', '整体计划可行，注意时间节点']" :key="s" class="btn btn-outline btn-sm" @click="approveComment = s" style="font-size:12px;">{{ s }}</button>
+          </div>
+          <button class="btn btn-success btn-block" @click="approvePlan">✅ 确认审批通过</button>
+        </div>
+      </div>
+
       <!-- Evaluation Modal -->
       <div v-if="showEvalModal && evalTask" class="modal-overlay" @click.self="showEvalModal = false">
         <div class="modal-content">
@@ -3558,7 +3592,7 @@ const PlanDetailPage = {
 
     </div>
   `,
-  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalNewDueDate: '2026-03-22', evalComment: '本周任务完成质量较好，按时交付，后续继续保持。', comment: '任务描述过于笼统，请具体说明各任务的可交付物，并补充完成标准', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, expandedAuxId: null, showCollabModal: false, collabTask: null, collabDept: '', collabNote: '', collabDeliverable: '', collabDeadline: '2026-03-15', showCollabReceiptModal: false, showAssignHandlerModal: false, collabHandlerId: '', collabHandlerName: '李明（行政专员）', collabReceiptNote: '行政人事中心将全力配合，已安排专员联系相关客户，预计3月15日前完成名单对接并提供详细清单。', newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '', editingTaskId: null, editTitle: '', editDue: '', editPriority: '', showEditTaskModal: false, editTaskObj: null, editProject: '', editDueDate: '', editDesc: '', editDeliverable: '', showFlowLogs: false, collabNewTitle: '', collabNewDeliverable: '', collabNewDue: '2026-03-15', collabNewPriority: 'medium', collabNewProject: '', collabNewDesc: '', newTaskCollabTarget: '' }; },
+  data() { return { showReturnModal: false, showEvalModal: false, evalTask: null, evalResult: 'completed', evalScore: 8, evalNewDueDate: '2026-03-22', evalComment: '本周任务完成质量较好，按时交付，后续继续保持。', comment: '任务描述过于笼统，请具体说明各任务的可交付物，并补充完成标准', showAddTask: false, showAddTaskModal: false, expandedTaskId: null, expandedAuxId: null, showCollabModal: false, collabTask: null, collabDept: '', collabNote: '', collabDeliverable: '', collabDeadline: '2026-03-15', showCollabReceiptModal: false, showAssignHandlerModal: false, collabHandlerId: '', collabHandlerName: '李明（行政专员）', collabReceiptNote: '行政人事中心将全力配合，已安排专员联系相关客户，预计3月15日前完成名单对接并提供详细清单。', newTaskType: 'midweek', newTaskTitle: '', newTaskPriority: 'medium', newTaskProject: '', newTaskDue: '2026-03-15', newTaskDesc: '', newTaskDeliverable: '', newTaskReviewer: '', editingTaskId: null, editTitle: '', editDue: '', editPriority: '', showEditTaskModal: false, editTaskObj: null, editProject: '', editDueDate: '', editDesc: '', editDeliverable: '', showFlowLogs: false, collabNewTitle: '', collabNewDeliverable: '', collabNewDue: '2026-03-15', collabNewPriority: 'medium', collabNewProject: '', collabNewDesc: '', newTaskCollabTarget: '', showApproveModal: false, approveComment: '' }; },
   computed: {
     plan() { return store.plans.find(p => p.id === parseInt(this.$route.params.id)); },
     currentUserObj() { return currentUser(); },
@@ -3687,7 +3721,7 @@ const PlanDetailPage = {
         return '等待员工完成任务，完成后将在此处发起结果评估。';
       }
       const s = this.plan.status;
-      if (s === 'draft') return '请完善任务清单后提交审核，主管将收到审批通知。';
+      if (s === 'draft') return '请完善任务清单后提交审批，主管将收到审批通知。';
       if (s === 'submitted') return '计划已提交，等待主管审批通过后即可开始执行。';
       if (s === 'returned') return '计划已被退回，请查看上方退回原因，修改后重新提交。';
       if (s === 'approved') {
@@ -4038,28 +4072,32 @@ const PlanDetailPage = {
     submitPlan() {
       transitionPlan(this.plan, 'submitted');
       this.plan.submittedAt = '03-12 ' + new Date().toTimeString().slice(0,5);
-      toast('✅ 计划已提交审核，等待主管审批');
+      toast('✅ 计划已提交，等待主管审批');
       createAuditLog('plan:submit', 'plan', this.plan.id, this.plan.userName + ' 提交了 ' + this.plan.weekCode + ' 周计划', null, { status: 'submitted' });
       // Mark revise_plan todo as done (if this is a resubmission after return)
       const reviseTodo = store.user_todos.find(t => t.type === 'revise_plan' && t.targetId === this.plan.id && !t.done);
       if (reviseTodo) reviseTodo.done = true;
       const managerId = store.users.find(u => u.id === this.plan.userId)?.managerId;
       if (managerId) {
-        createNotification('plan_submitted', 'plan', this.plan.id, this.plan.userName + '提交了周计划', this.plan.weekCode + '周计划等待审核，共' + this.plan.tasks.length + '个任务，请及时处理', '📋', 'var(--primary-soft)', [managerId], '/plans/' + this.plan.id);
+        createNotification('plan_submitted', 'plan', this.plan.id, this.plan.userName + '提交了周计划', this.plan.weekCode + '周计划等待审批，共' + this.plan.tasks.length + '个任务，请及时处理', '📋', 'var(--primary-soft)', [managerId], '/plans/' + this.plan.id);
         createTodo(managerId, 'approve_plan', 'plan', this.plan.id, '审批 ' + this.plan.userName + ' 的周计划', this.plan.weekCode + '，共' + this.plan.tasks.length + '个任务', '/plans/' + this.plan.id);
       }
     },
     approvePlan() {
+      const comment = this.approveComment.trim() || currentUser().name + ' 审批通过，请按计划执行。';
+      this.plan.approvalComment = comment;
       transitionPlan(this.plan, 'approved');
       this.plan.approvedById = currentUser().id;
+      this.showApproveModal = false;
       toast('✅ 计划已审批通过');
-      createAuditLog('plan:approve', 'plan', this.plan.id, currentUser().name + ' 审批通过了 ' + this.plan.userName + ' 的周计划', { status: 'submitted' }, { status: 'approved' });
-      createNotification('plan_approved', 'plan', this.plan.id, '周计划审批通过', currentUser().name + '已审批通过您的' + this.plan.weekCode + '周计划，可以开始执行', '✅', 'var(--success-soft)', [this.plan.userId], '/plans/' + this.plan.id);
+      createAuditLog('plan:approve', 'plan', this.plan.id, currentUser().name + ' 审批通过了 ' + this.plan.userName + ' 的周计划：' + comment, { status: 'submitted' }, { status: 'approved' });
+      createNotification('plan_approved', 'plan', this.plan.id, '周计划审批通过', currentUser().name + '已审批通过您的' + this.plan.weekCode + '周计划：' + comment, '✅', 'var(--success-soft)', [this.plan.userId], '/plans/' + this.plan.id);
       // Mark the manager's approval todo as done
       const approvalTodo = store.user_todos.find(t => t.type === 'approve_plan' && t.targetId === this.plan.id && !t.done);
       if (approvalTodo) approvalTodo.done = true;
       // Create a todo for the employee to start execution
       createTodo(this.plan.userId, 'start_execution', 'plan', this.plan.id, '开始执行本周计划', this.plan.weekCode + '计划已审批通过，进入执行阶段', '/tasks');
+      this.approveComment = '';
     },
     returnPlan() {
       transitionPlan(this.plan, 'returned');
@@ -4561,6 +4599,9 @@ const ReviewPage = {
     showAiFullText: false, showTemplateSelector: false, selectedTemplateId: null,
     expandedDay: null
   }; },
+  created() {
+    if (this.$route.query.week) this.selectedWeek = this.$route.query.week;
+  },
   template: `
     <div class="page">
       <!-- Member viewing banner -->
@@ -4605,6 +4646,21 @@ const ReviewPage = {
 
       <!-- ======== WEEK VIEW ======== -->
       <template v-if="period === 'week'">
+
+        <!-- 本周未评估完成限制提示 -->
+        <div v-if="weekReviewBlocked" style="margin-bottom:12px;">
+          <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:16px;padding:20px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:10px;">⏳</div>
+            <div style="font-size:16px;font-weight:700;color:#92400e;margin-bottom:6px;">本周复盘尚未开放</div>
+            <div style="font-size:13px;color:#a16207;line-height:1.6;margin-bottom:16px;">本周任务尚未全部完成评估，请等待主管完成所有任务评估后再进入本周复盘。</div>
+            <div style="display:flex;gap:8px;justify-content:center;">
+              <button style="padding:10px 20px;background:var(--primary);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;" @click="$router.push('/tasks')">📋 返回任务页</button>
+              <button style="padding:10px 20px;background:white;border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text-2);cursor:pointer;" @click="selectedWeek = 'W10'">📖 查看历史复盘</button>
+            </div>
+          </div>
+        </div>
+
+        <template v-if="!weekReviewBlocked">
         <!-- 1. 结果摘要 -->
         <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:16px;padding:16px;margin-bottom:12px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
@@ -4692,6 +4748,7 @@ const ReviewPage = {
             📋 查看本周任务
           </button>
         </div>
+        </template>
       </template>
 
       <!-- ======== MONTH VIEW ======== -->
@@ -4930,6 +4987,27 @@ const ReviewPage = {
     </div>
   `,
   computed: {
+    currentWeekCode() {
+      return getWeekCode(store.weekOffset).split('-')[1];
+    },
+    isCurrentWeek() {
+      return this.selectedWeek === this.currentWeekCode;
+    },
+    currentWeekPlan() {
+      const uid = store.viewingMember ? null : currentUser().id;
+      if (!uid) return null;
+      return store.plans.find(p => p.userId === uid && p.weekCode === '2026-' + this.currentWeekCode) || null;
+    },
+    currentWeekAllEvaluated() {
+      const p = this.currentWeekPlan;
+      if (!p) return false;
+      if (p.status !== 'approved' && p.status !== 'reviewed') return false;
+      if (!p.tasks || p.tasks.length === 0) return false;
+      return p.tasks.every(t => t.status === 'done' && t.reviewResult);
+    },
+    weekReviewBlocked() {
+      return this.period === 'week' && this.isCurrentWeek && !this.currentWeekAllEvaluated;
+    },
     periods() { return [{ value:'week', label:'周复盘' }, { value:'month', label:'月复盘' }, { value:'quarter', label:'季度复盘' }, { value:'year', label:'年度复盘' }]; },
     availableTemplates() {
       const periodMap = { week: 'week', month: 'month', quarter: 'quarter', year: 'year' };
@@ -5468,7 +5546,7 @@ const BossDashboard = {
           <div style="font-size:12px;line-height:2;">
             <div>🟢 已复盘 {{ reviewedPlans }}</div>
             <div>🔵 已通过 {{ approvedPlans }}</div>
-            <div>🟡 待审核 {{ submittedPlans }}</div>
+            <div>🟡 待审批 {{ submittedPlans }}</div>
             <div>⚪ 草稿/未提交 {{ draftPlans }}</div>
           </div>
         </div>
@@ -6000,7 +6078,7 @@ const AdminDashboard = {
       return [
         { name: '钉钉组织架构同步', icon: '🏢', lastRun: '2026-03-12 06:00', status: 'success' },
         { name: '钉钉人员信息同步', icon: '👤', lastRun: '2026-03-12 06:00', status: 'success' },
-        { name: '审核链自动更新', icon: '🔗', lastRun: '2026-03-11 14:30', status: 'success' },
+        { name: '审批链自动更新', icon: '🔗', lastRun: '2026-03-11 14:30', status: 'success' },
       ];
     },
     pendingItems() {
@@ -6012,8 +6090,8 @@ const AdminDashboard = {
     },
     anomalies() {
       return [
-        '刘管理（管理员）审核链未配置上级审核人',
-        '物流中心部门负责人变更后未同步审核链',
+        '刘管理（管理员）审批链未配置上级审批人',
+        '物流中心部门负责人变更后未同步审批链',
         '用户 dt_011 在钉钉存在但系统内未创建',
       ];
     },
@@ -6135,7 +6213,7 @@ const AdminPersonnel = {
                   <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
                     <div style="width:28px;height:28px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;">{{ getManager(u).name[0] }}</div>
                     <div style="font-size:10px;color:var(--text-2);">{{ getManager(u).name }}</div>
-                    <div style="font-size:9px;color:var(--text-3);">审核人</div>
+                    <div style="font-size:9px;color:var(--text-3);">审批人</div>
                   </div>
                 </template>
                 <!-- Arrow + Senior Reviewer -->
@@ -6144,15 +6222,15 @@ const AdminPersonnel = {
                   <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
                     <div style="width:28px;height:28px;border-radius:50%;background:var(--violet);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;">{{ getSeniorManager(u).name[0] }}</div>
                     <div style="font-size:10px;color:var(--text-2);">{{ getSeniorManager(u).name }}</div>
-                    <div style="font-size:9px;color:var(--text-3);">高级审核人</div>
+                    <div style="font-size:9px;color:var(--text-3);">高级审批人</div>
                   </div>
                 </template>
-                <div v-if="!getManager(u)" style="color:var(--text-3);font-size:11px;">未设置审核链</div>
+                <div v-if="!getManager(u)" style="color:var(--text-3);font-size:11px;">未设置审批链</div>
 
                 <!-- Sync mode badges -->
                 <div style="margin-left:auto;display:flex;flex-direction:column;gap:3px;align-items:flex-end;">
                   <span style="font-size:9px;padding:1px 6px;border-radius:4px;" :style="u.reviewerSyncMode === 'auto' ? 'background:#e8f4ff;color:#1677ff' : 'background:var(--warning-soft);color:var(--warning)'">
-                    审核人：{{ u.reviewerSyncMode === 'auto' ? '🔄 自动' : '✋ 手工' }}
+                    审批人：{{ u.reviewerSyncMode === 'auto' ? '🔄 自动' : '✋ 手工' }}
                   </span>
                   <span style="font-size:9px;padding:1px 6px;border-radius:4px;" :style="u.seniorReviewerSyncMode === 'auto' ? 'background:#e8f4ff;color:#1677ff' : 'background:var(--warning-soft);color:var(--warning)'">
                     高级：{{ u.seniorReviewerSyncMode === 'auto' ? '🔄 自动' : '✋ 手工' }}
@@ -6194,14 +6272,14 @@ const AdminPersonnel = {
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 <div>
-                  <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">审核人同步</div>
+                  <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">审批人同步</div>
                   <select v-model="editForm.reviewerSyncMode" style="font-size:12px;">
                     <option value="auto">🔄 自动（跟随钉钉层级）</option>
                     <option value="manual">✋ 手工（锁定不被覆盖）</option>
                   </select>
                 </div>
                 <div>
-                  <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">高级审核人同步</div>
+                  <div style="font-size:11px;color:var(--text-3);margin-bottom:3px;">高级审批人同步</div>
                   <select v-model="editForm.seniorReviewerSyncMode" style="font-size:12px;">
                     <option value="auto">🔄 自动</option>
                     <option value="manual">✋ 手工</option>
@@ -6209,7 +6287,7 @@ const AdminPersonnel = {
                 </div>
               </div>
               <div v-if="editForm.reviewerSyncMode === 'manual'" style="font-size:11px;padding:8px;background:var(--warning-soft);border-radius:6px;color:var(--warning);">
-                ⚠️ 手工模式下，钉钉同步不会覆盖该用户的审核链配置
+                ⚠️ 手工模式下，钉钉同步不会覆盖该用户的审批链配置
               </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:12px;">
@@ -6393,7 +6471,7 @@ const AdminPersonnel = {
       u.seniorReviewerSyncMode = this.editForm.seniorReviewerSyncMode;
       this.editingUserId = null;
       toast('✅ ' + u.name + ' 配置已保存');
-      createAuditLog('user:update', 'user', u.id, '管理员更新了 ' + u.name + ' 的角色和审核链配置', null, { role: u.role, managerId: u.managerId });
+      createAuditLog('user:update', 'user', u.id, '管理员更新了 ' + u.name + ' 的角色和审批链配置', null, { role: u.role, managerId: u.managerId });
     },
     toggleActive(u) {
       u.isActive = u.isActive === false ? true : false;
